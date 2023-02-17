@@ -19,9 +19,26 @@ defmodule Cosmos.Entity do
     )
   end
 
-  def components(entity, type) when is_bitstring(type) do
+  def components(entity) do
     entity.components
-    |> Stream.filter(fn {_, comp} -> comp.type == type end)
+    |> Enum.map(fn {_, comp} -> comp end)
+  end
+
+  def components(entity, component_name) when is_bitstring(component_name) do
+    entity.components
+    |> Stream.filter(fn {_, comp} -> comp.name == component_name end)
+    |> Enum.map(fn {_, comp} -> comp end)
+  end
+
+  def components(entity, component_type) when is_atom(component_type) do
+    entity.components
+    |> Stream.filter(fn {_, comp} -> comp.type == component_type end)
+    |> Enum.map(fn {_, comp} -> comp end)
+  end
+
+  def components(entity, component_id) when is_integer(component_id) do
+    entity.components
+    |> Stream.filter(fn {_, comp} -> comp.id == component_id end)
     |> Enum.map(fn {_, comp} -> comp end)
   end
 
