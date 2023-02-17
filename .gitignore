@@ -24,3 +24,6 @@ cosmos-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+# directory to store serialized entities
+persist/

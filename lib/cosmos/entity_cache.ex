@@ -11,6 +11,7 @@ defmodule Cosmos.EntityCache do
 
   @impl true
   def init(_) do
+    Cosmos.Database.start()
     {:ok, %{}}
   end
 

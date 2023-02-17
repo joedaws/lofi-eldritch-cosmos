@@ -34,11 +34,15 @@ defmodule Cosmos.EntityServer do
 
   @impl true
   def handle_cast({:add_component, component}, entity) do
-    {:noreply, Cosmos.Entity.add_component(entity, component)}
+    new_entity = Cosmos.Entity.add_component(entity, component)
+    Cosmos.Database.store(entity.id, new_entity)
+    {:noreply, new_entity}
   end
 
   @impl true
   def handle_cast({:delete_component, component_id}, entity) do
-    {:noreploy, Cosmos.Entity.delete_component(entity, component_id)}
+    new_entity = Cosmos.Entity.delete_component(entity, component_id)
+    Cosmos.Database.store(entity.id, new_entity)
+    {:noreply, new_entity}
   end
 end
