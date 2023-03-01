@@ -1,11 +1,12 @@
 defmodule Cosmos.EntityCacheTest do
   use ExUnit.Case
 
-  test "server_process" do
+  test "server process for new being" do
     {:ok, cache} = Cosmos.EntityCache.start()
-    jorsa_pid = Cosmos.EntityCache.server_process(cache, "jorsa")
 
-    assert jorsa_pid != Cosmos.EntityCache.server_process(cache, "jorp")
-    assert jorsa_pid == Cosmos.EntityCache.server_process(cache, "jorsa")
+    server = Cosmos.EntityCache.server_process(cache)
+    entity_id = Cosmos.EntityServer.get(server).id
+
+    assert server == Cosmos.EntityCache.server_process(cache, entity_id)
   end
 end

@@ -6,7 +6,11 @@ defmodule Cosmos.EntityServer do
   This will be changed in the future
   """
   def start() do
-    GenServer.start_link(__MODULE__, [])
+    GenServer.start_link(__MODULE__, :new_entity)
+  end
+
+  def start(entity_id) do
+    GenServer.start_link(__MODULE__, entity_id)
   end
 
   def get(entity_server) do
@@ -22,27 +26,36 @@ defmodule Cosmos.EntityServer do
   end
 
   @impl true
-  def init(_) do
-    new_entity = Cosmos.Entity.new()
-    {:ok, new_entity}
+  def init(:new_entity) do
+    entity = Cosmos.Entity.new()
+    {:ok, {entity.id, entity}}
   end
 
   @impl true
-  def handle_call({:get}, _from, entity) do
-    {:reply, entity, entity}
+  def init(entity_id) do
+    # :enoent means the file did not exist
+    case Cosmos.Database.get(entity_id) do
+      :enoent -> {:error, :enoent}
+      entity -> {:ok, {entity_id, entity}}
+    end
   end
 
   @impl true
-  def handle_cast({:add_component, component}, entity) do
+  def handle_call({:get}, _from, {entity_id, entity}) do
+    {:reply, entity, {entity_id, entity}}
+  end
+
+  @impl true
+  def handle_cast({:add_component, component}, {entity_id, entity}) do
     new_entity = Cosmos.Entity.add_component(entity, component)
     Cosmos.Database.store(entity.id, new_entity)
-    {:noreply, new_entity}
+    {:noreply, {entity_id, new_entity}}
   end
 
   @impl true
-  def handle_cast({:delete_component, component_id}, entity) do
+  def handle_cast({:delete_component, component_id}, {entity_id, entity}) do
     new_entity = Cosmos.Entity.delete_component(entity, component_id)
     Cosmos.Database.store(entity.id, new_entity)
-    {:noreply, new_entity}
+    {:noreply, {entity_id, new_entity}}
   end
 end

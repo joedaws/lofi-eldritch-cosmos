@@ -83,6 +83,7 @@ defmodule Cosmos.Entity do
       {:not_found, _} ->
         entity
 
+      # TODO figure out a good way to modify the components
       {_, new_components} ->
         %__MODULE__{entity | components: new_components}
     end

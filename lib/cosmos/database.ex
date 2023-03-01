@@ -34,6 +34,7 @@ defmodule Cosmos.Database do
     data =
       case File.read(file_name(key)) do
         {:ok, contents} -> :erlang.binary_to_term(contents)
+        {:error, :enoent} -> :enoent
         _ -> nil
       end
 
