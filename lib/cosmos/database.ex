@@ -1,6 +1,8 @@
 defmodule Cosmos.Database do
   use GenServer
 
+  @num_workers 3
+
   def start do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
@@ -13,36 +15,44 @@ defmodule Cosmos.Database do
     GenServer.call(__MODULE__, {:get, key})
   end
 
+  def choose_worker(workers, key) do
+    Map.get(workers, :erlang.phash2(key, @num_workers))
+  end
+
   @impl true
   def init(_) do
     persist_dir = Cosmos.get_persist_dir()
-    File.mkdir_p!(persist_dir)
-    {:ok, nil}
+
+    workers =
+      for i <- 0..(@num_workers - 1),
+          into: %{},
+          do: {i, Cosmos.DatabaseWorker.start(persist_dir) |> elem(1)}
+
+    {:ok, workers}
   end
 
   @impl true
-  def handle_cast({:store, key, data}, state) do
-    key
-    |> file_name()
-    |> File.write!(:erlang.term_to_binary(data))
+  def handle_cast({:store, key, data}, workers) do
+    worker = choose_worker(workers, key)
 
-    {:noreply, state}
+    IO.puts("#{inspect(worker)} was chosen")
+
+    Cosmos.DatabaseWorker.store(worker, key, data)
+
+    {:noreply, workers}
   end
 
   @impl true
-  def handle_call({:get, key}, _from, state) do
+  def handle_call({:get, key}, _from, workers) do
+    worker = choose_worker(workers, key)
+
     data =
-      case File.read(file_name(key)) do
-        {:ok, contents} -> :erlang.binary_to_term(contents)
-        {:error, :enoent} -> :enoent
+      case Cosmos.DatabaseWorker.get(worker, key) do
+        {:ok, contents} -> contents
+        :enoent -> :enoent
         _ -> nil
       end
 
-    {:reply, data, state}
-  end
-
-  defp file_name(key) do
-    persist_dir = Cosmos.get_persist_dir()
-    Path.join(persist_dir, to_string(key))
+    {:reply, data, workers}
   end
 end
