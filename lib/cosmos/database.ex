@@ -1,5 +1,6 @@
 defmodule Cosmos.Database do
   use GenServer
+  require Logger
 
   @num_workers 3
 
@@ -28,14 +29,14 @@ defmodule Cosmos.Database do
           into: %{},
           do: {i, Cosmos.DatabaseWorker.start(persist_dir) |> elem(1)}
 
+    Logger.info("#{inspect(__MODULE__)} started #{@num_workers} workers")
+
     {:ok, workers}
   end
 
   @impl true
   def handle_cast({:store, key, data}, workers) do
     worker = choose_worker(workers, key)
-
-    IO.puts("#{inspect(worker)} was chosen")
 
     Cosmos.DatabaseWorker.store(worker, key, data)
 

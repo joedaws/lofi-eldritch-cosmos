@@ -15,7 +15,7 @@ iex -S mix
 Then run something like to make sure that database workers
 are behaving as expected.
 ``` elixir
-iex(1)> {:ok, cache} = Cosmos.EntityCache.start()
+iex(1)> Cosmos.EntityCache.start_link()
 {:ok, #PID<0.215.0>}
 iex(2)> server = Cosmos.EntityServer.start()
 {:ok, #PID<0.221.0>}
