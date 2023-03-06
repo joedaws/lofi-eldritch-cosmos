@@ -1,9 +1,9 @@
-defmodule Cosmos.EntityCache do
+defmodule Cosmos.Entity.Cache do
   use GenServer
   require Logger
 
   def start_link([]) do
-    Logger.info("Starting the entity cache")
+    Logger.info("Started the entity cache")
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
@@ -18,6 +18,7 @@ defmodule Cosmos.EntityCache do
   @impl true
   def init(_) do
     Cosmos.Database.start()
+    Logger.info("started the database server")
     {:ok, %{}}
   end
 
@@ -29,7 +30,7 @@ defmodule Cosmos.EntityCache do
         {:reply, entity_server, entity_servers}
 
       :error ->
-        {:ok, new_server} = Cosmos.EntityServer.start(entity_id)
+        {:ok, new_server} = Cosmos.Entity.Server.start(entity_id)
         Logger.info("Started worker process for existing entity #{entity_id}")
         {:reply, new_server, Map.put(entity_servers, entity_id, new_server)}
     end
@@ -37,8 +38,8 @@ defmodule Cosmos.EntityCache do
 
   @impl true
   def handle_call({:server_process}, _from, entity_servers) do
-    {:ok, new_server} = Cosmos.EntityServer.start()
-    entity_id = Cosmos.EntityServer.get(new_server).id
+    {:ok, new_server} = Cosmos.Entity.Server.start()
+    entity_id = Cosmos.Entity.Server.get(new_server).id
     Logger.info("Started worker process for new entity #{entity_id}")
     {:reply, new_server, Map.put(entity_servers, entity_id, new_server)}
   end

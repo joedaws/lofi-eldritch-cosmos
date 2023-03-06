@@ -1,4 +1,4 @@
-defmodule Cosmos.EntityServer do
+defmodule Cosmos.Entity.Server do
   use GenServer
 
   @doc """
