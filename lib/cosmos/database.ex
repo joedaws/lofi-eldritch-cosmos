@@ -4,7 +4,7 @@ defmodule Cosmos.Database do
 
   @num_workers 3
 
-  def start do
+  def start_link(_) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
@@ -30,6 +30,7 @@ defmodule Cosmos.Database do
           do: {i, Cosmos.DatabaseWorker.start(persist_dir) |> elem(1)}
 
     Logger.info("#{inspect(__MODULE__)} started #{@num_workers} workers")
+    Logger.info("started the database server")
 
     {:ok, workers}
   end

@@ -17,8 +17,6 @@ defmodule Cosmos.Entity.Cache do
 
   @impl true
   def init(_) do
-    Cosmos.Database.start()
-    Logger.info("started the database server")
     {:ok, %{}}
   end
 
