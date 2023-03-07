@@ -48,6 +48,8 @@ defmodule Cosmos.Entity do
   Each component may have other keys according to their usage.
   """
   def add_component(entity, component) do
+    # TODO consider having the component.name be the key
+    #      and only allowing one component of each name
     component = Map.put(component, :id, entity.auto_component_id)
     new_components = Map.put(entity.components, entity.auto_component_id, component)
 
@@ -83,14 +85,31 @@ defmodule Cosmos.Entity do
       {:not_found, _} ->
         entity
 
-      # TODO figure out a good way to modify the components
-      {_, new_components} ->
-        %__MODULE__{entity | components: new_components}
+      {old_component, remaining_components} ->
+        id_to_replace = old_component.id
+
+        new_components =
+          for comp_tuple <- remaining_components,
+              into: %{},
+              do: update_component_id(id_to_replace, comp_tuple)
+
+        %__MODULE__{
+          entity
+          | components: new_components,
+            auto_component_id: entity.auto_component_id - 1
+        }
     end
   end
 
   def generate_id() do
     Ksuid.generate()
+  end
+
+  defp update_component_id(id_to_replace, {id, component}) do
+    cond do
+      id < id_to_replace -> {id, component}
+      id > id_to_replace -> {id - 1, %{component | id: id - 1}}
+    end
   end
 end
 
