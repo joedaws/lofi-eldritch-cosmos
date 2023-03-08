@@ -1,4 +1,15 @@
 defmodule Cosmos.Entity do
+  @moduledoc """
+  An entity has
+    - :id - set by this module's `generate_id` function
+    - :components - a map whose keys are `component_id`
+                    and whose values are Cosmos.Entity.Component struct instances
+    - :auto_component_id - used to set component ids when adding and removing components
+                           from the entity
+
+  The names of the components are unique.
+  """
+
   @enforce_keys [:id, :components, :auto_component_id]
   defstruct [:id, :components, :auto_component_id]
 
@@ -43,20 +54,40 @@ defmodule Cosmos.Entity do
   end
 
   @doc """
-  components are maps which at a minumum :type as a key.
+  Adds a component to the entity
 
-  Each component may have other keys according to their usage.
+  If the provided component has the same name as a
+  component which has already been registered
+  with the entity, that component is updated instead of
+  added to ensure that each entity has at most one component
+  with a given name.
   """
   def add_component(entity, component) do
-    # TODO consider having the component.name be the key
-    #      and only allowing one component of each name
-    component = Map.put(component, :id, entity.auto_component_id)
-    new_components = Map.put(entity.components, entity.auto_component_id, component)
+    component_names = for {_, comp} <- entity.components, do: comp.name
+
+    {new_auto_component_id, new_components} =
+      if component.name not in component_names do
+        component = Map.put(component, :id, entity.auto_component_id)
+        components = Map.put(entity.components, component.id, component)
+        {entity.auto_component_id + 1, components}
+      else
+        existing_component_id =
+          Enum.filter(
+            entity.components,
+            fn {_, v} -> v.name == component.name end
+          )
+          |> Enum.at(0)
+          |> elem(0)
+
+        # new components don't have their id field set yet
+        {entity.auto_component_id,
+         %{entity.components | existing_component_id => %{component | id: existing_component_id}}}
+      end
 
     %__MODULE__{
       entity
       | components: new_components,
-        auto_component_id: entity.auto_component_id + 1
+        auto_component_id: new_auto_component_id
     }
   end
 
