@@ -18,7 +18,6 @@ defmodule Cosmos.DatabaseWorker do
 
   @impl true
   def init(persist_dir) do
-    File.mkdir_p!(persist_dir)
     {:ok, persist_dir}
   end
 
@@ -39,7 +38,7 @@ defmodule Cosmos.DatabaseWorker do
         _ -> nil
       end
 
-    Logger.info("#{self()}: fetching #{key}")
+    Logger.info("#{inspect(self())}: fetching #{key}")
 
     {:reply, data, persist_dir}
   end

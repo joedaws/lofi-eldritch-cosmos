@@ -17,7 +17,7 @@ are behaving as expected.
 ``` elixir
 iex(1)> Cosmos.Entity.Cache.start_link()
 {:ok, #PID<0.215.0>}
-iex(2)> server = Cosmos.Entity.Server.start()
+iex(2)> server = Cosmos.Entity.Server.start_link("jorsa")
 {:ok, #PID<0.221.0>}
 iex(3)> {_, server} = server
 {:ok, #PID<0.221.0>}
@@ -32,4 +32,4 @@ iex(5)> comp = Cosmos.Entity.Component.new("name", :static, "johnson")
 iex(6)> Cosmos.Entity.Server.add_component(server, comp)
 :ok
 #PID<0.217.0> was chosen
-```
+`;``

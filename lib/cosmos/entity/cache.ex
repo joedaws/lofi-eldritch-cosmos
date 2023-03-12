@@ -1,44 +1,27 @@
 defmodule Cosmos.Entity.Cache do
-  use GenServer
   require Logger
 
-  def start_link([]) do
+  def start_link() do
     Logger.info("Started the entity cache")
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+    DynamicSupervisor.start_link(name: __MODULE__, strategy: :one_for_one)
+  end
+
+  def child_spec(_arg) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, []},
+      type: :supervisor
+    }
   end
 
   def server_process(entity_id) do
-    GenServer.call(__MODULE__, {:server_process, entity_id})
-  end
-
-  def server_process() do
-    GenServer.call(__MODULE__, {:server_process})
-  end
-
-  @impl true
-  def init(_) do
-    {:ok, %{}}
-  end
-
-  @impl true
-  def handle_call({:server_process, entity_id}, _from, entity_servers) do
-    case Map.fetch(entity_servers, entity_id) do
-      {:ok, entity_server} ->
-        Logger.info("Fetched worker process for existing entity #{entity_id}")
-        {:reply, entity_server, entity_servers}
-
-      :error ->
-        {:ok, new_server} = Cosmos.Entity.Server.start(entity_id)
-        Logger.info("Started worker process for existing entity #{entity_id}")
-        {:reply, new_server, Map.put(entity_servers, entity_id, new_server)}
+    case start_child(entity_id) do
+      {:ok, pid} -> pid
+      {:error, {:already_started, pid}} -> pid
     end
   end
 
-  @impl true
-  def handle_call({:server_process}, _from, entity_servers) do
-    {:ok, new_server} = Cosmos.Entity.Server.start()
-    entity_id = Cosmos.Entity.Server.get(new_server).id
-    Logger.info("Started worker process for new entity #{entity_id}")
-    {:reply, new_server, Map.put(entity_servers, entity_id, new_server)}
+  defp start_child(entity_id) do
+    DynamicSupervisor.start_child(__MODULE__, {Cosmos.Entity.Server, entity_id})
   end
 end

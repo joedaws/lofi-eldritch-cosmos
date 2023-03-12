@@ -1,16 +1,9 @@
 defmodule Cosmos.Entity.Server do
-  use GenServer
+  use GenServer, restart: :temporary
+  require Logger
 
-  @doc """
-  While flushing out the functionality we naively have a single Entity Server.
-  This will be changed in the future
-  """
-  def start() do
-    GenServer.start_link(__MODULE__, :new_entity)
-  end
-
-  def start(entity_id) do
-    GenServer.start_link(__MODULE__, entity_id)
+  def start_link(entity_id) do
+    GenServer.start_link(__MODULE__, entity_id, name: via_tuple(entity_id))
   end
 
   def get(entity_server) do
@@ -26,18 +19,9 @@ defmodule Cosmos.Entity.Server do
   end
 
   @impl true
-  def init(:new_entity) do
-    entity = Cosmos.Entity.new()
-    {:ok, {entity.id, entity}}
-  end
-
-  @impl true
   def init(entity_id) do
-    # :enoent means the file did not exist
-    case Cosmos.Database.get(entity_id) do
-      :enoent -> {:error, :enoent}
-      entity -> {:ok, {entity_id, entity}}
-    end
+    Logger.info("starting entity server for entity #{inspect(entity_id)}")
+    {:ok, {entity_id, Cosmos.Database.get(entity_id) || Cosmos.Entity.new()}}
   end
 
   @impl true
@@ -57,5 +41,9 @@ defmodule Cosmos.Entity.Server do
     new_entity = Cosmos.Entity.delete_component(entity, component_id)
     Cosmos.Database.store(entity.id, new_entity)
     {:noreply, {entity_id, new_entity}}
+  end
+
+  defp via_tuple(entity_id) do
+    Cosmos.ProcessRegistry.via_tuple({__MODULE__, entity_id})
   end
 end
