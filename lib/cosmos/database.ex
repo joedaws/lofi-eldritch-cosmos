@@ -1,60 +1,48 @@
 defmodule Cosmos.Database do
-  use GenServer
   require Logger
 
   @num_workers 3
 
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, [], name: __MODULE__)
+  def start_link do
+    database_dir = persist_dir()
+    Logger.info("Ensuring local directory #{database_dir} has been created")
+    File.mkdir_p!(database_dir)
+
+    children = Enum.map(1..@num_workers, &worker_spec/1)
+    Logger.info("#{inspect(__MODULE__)} starting #{@num_workers} database workers")
+    Supervisor.start_link(children, strategy: :one_for_one)
   end
 
   def store(key, data) do
-    GenServer.cast(__MODULE__, {:store, key, data})
+    key
+    |> choose_worker()
+    |> Cosmos.DatabaseWorker.store(key, data)
   end
 
   def get(key) do
-    GenServer.call(__MODULE__, {:get, key})
+    key
+    |> choose_worker()
+    |> Cosmos.DatabaseWorker.get(key)
   end
 
-  def choose_worker(workers, key) do
-    Map.get(workers, :erlang.phash2(key, @num_workers))
+  def choose_worker(key) do
+    :erlang.phash2(key, @num_workers) + 1
   end
 
-  @impl true
-  def init(_) do
-    persist_dir = Cosmos.get_persist_dir()
-
-    workers =
-      for i <- 0..(@num_workers - 1),
-          into: %{},
-          do: {i, Cosmos.DatabaseWorker.start(persist_dir) |> elem(1)}
-
-    Logger.info("#{inspect(__MODULE__)} started #{@num_workers} workers")
-    Logger.info("started the database server")
-
-    {:ok, workers}
+  def child_spec(_) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, []},
+      type: :supervisor
+    }
   end
 
-  @impl true
-  def handle_cast({:store, key, data}, workers) do
-    worker = choose_worker(workers, key)
-
-    Cosmos.DatabaseWorker.store(worker, key, data)
-
-    {:noreply, workers}
+  defp persist_dir do
+    Cosmos.get_persist_dir()
   end
 
-  @impl true
-  def handle_call({:get, key}, _from, workers) do
-    worker = choose_worker(workers, key)
-
-    data =
-      case Cosmos.DatabaseWorker.get(worker, key) do
-        {:ok, contents} -> contents
-        :enoent -> :enoent
-        _ -> nil
-      end
-
-    {:reply, data, workers}
+  defp worker_spec(worker_id) do
+    default_worker_spec = {Cosmos.DatabaseWorker, {persist_dir(), worker_id}}
+    Supervisor.child_spec(default_worker_spec, id: worker_id)
   end
 end

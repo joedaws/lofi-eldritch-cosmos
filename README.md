@@ -1,7 +1,6 @@
 # Lofi Eldritch beings to study with
 
 Simulation of a cosmos of eldritch beings trying to learn cooperation and social organization.
-    
 
 # Testing
 
@@ -20,7 +19,7 @@ iex(1)> Cosmos.Entity.Cache.start_link()
 {:ok, #PID<0.215.0>}
 iex(2)> server = Cosmos.Entity.Server.start()
 {:ok, #PID<0.221.0>}
-iex(3)> {_, server} = server                    
+iex(3)> {_, server} = server
 {:ok, #PID<0.221.0>}
 iex(4)> entity = Cosmos.Entity.Server.get(server)
 %Cosmos.Entity{
@@ -30,7 +29,7 @@ iex(4)> entity = Cosmos.Entity.Server.get(server)
 }
 iex(5)> comp = Cosmos.Entity.Component.new("name", :static, "johnson")
 %Cosmos.Entity.Component{name: "name", type: :static, value: "johnson", id: nil}
-iex(6)> Cosmos.Entity.Server.add_component(server, comp)               
+iex(6)> Cosmos.Entity.Server.add_component(server, comp)
 :ok
 #PID<0.217.0> was chosen
 ```

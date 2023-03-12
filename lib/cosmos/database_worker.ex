@@ -2,16 +2,18 @@ defmodule Cosmos.DatabaseWorker do
   use GenServer
   require Logger
 
-  def start(persist_dir) do
-    GenServer.start_link(__MODULE__, persist_dir)
+  def start_link({persist_dir, worker_id}) do
+    Logger.info("Starting database worker #{worker_id}")
+
+    GenServer.start_link(__MODULE__, persist_dir, name: via_tuple(worker_id))
   end
 
-  def store(pid, key, data) do
-    GenServer.cast(pid, {:store, key, data})
+  def store(worker_id, key, data) do
+    GenServer.cast(via_tuple(worker_id), {:store, key, data})
   end
 
-  def get(pid, key) do
-    GenServer.call(pid, {:get, key})
+  def get(worker_id, key) do
+    GenServer.call(via_tuple(worker_id), {:get, key})
   end
 
   @impl true
@@ -44,5 +46,9 @@ defmodule Cosmos.DatabaseWorker do
 
   defp file_name(persist_dir, key) do
     Path.join(persist_dir, to_string(key))
+  end
+
+  defp via_tuple(worker_id) do
+    Cosmos.ProcessRegistry.via_tuple({__MODULE__, worker_id})
   end
 end
