@@ -2,6 +2,10 @@
 
 Simulation of a cosmos of eldritch beings trying to learn cooperation and social organization.
 
+# Current feature considerations 
+
+- Consider using [quantum](https://hexdocs.pm/quantum/readme.html) to schedule simulation-wide events and system-level updates.
+
 # Testing
 
 ## Testing database workers

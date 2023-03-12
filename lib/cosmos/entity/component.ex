@@ -3,6 +3,7 @@ defmodule Cosmos.Entity.Component do
   defstruct [:name, :type, :value, :id]
 
   @component_types [
+    :quantity,
     :static,
     :temporal_decay
   ]
