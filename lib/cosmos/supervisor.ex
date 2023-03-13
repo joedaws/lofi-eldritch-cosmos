@@ -3,6 +3,7 @@ defmodule Cosmos.Supervisor do
     Supervisor.start_link(
       [
         Cosmos.ProcessRegistry,
+        Cosmos.SystemRegistry,
         Cosmos.Database,
         Cosmos.Entity.Cache
       ],

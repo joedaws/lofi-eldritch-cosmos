@@ -33,14 +33,34 @@ defmodule Cosmos.Entity.Server do
   def handle_cast({:add_component, component}, {entity_id, entity}) do
     new_entity = Cosmos.Entity.add_component(entity, component)
     Cosmos.Database.store(entity.id, new_entity)
+
+    # register entity with system associated with new component's type
+    register_to_system(entity_id, component.type)
     {:noreply, {entity_id, new_entity}}
   end
 
   @impl true
   def handle_cast({:delete_component, component_id}, {entity_id, entity}) do
-    new_entity = Cosmos.Entity.delete_component(entity, component_id)
-    Cosmos.Database.store(entity.id, new_entity)
-    {:noreply, {entity_id, new_entity}}
+    case Cosmos.Entity.delete_component(entity, component_id) do
+      {entity, :not_found} ->
+        {:noreply, {entity_id, entity}}
+
+      {new_entity, removed_component} ->
+        unregister_to_system(removed_component.type)
+        Cosmos.Database.store(entity_id, new_entity)
+        {:noreply, {entity_id, new_entity}}
+    end
+  end
+
+  defp register_to_system(entity_id, system_atom) do
+    # only register to the system if not already present
+    case Registry.match(Cosmos.SystemRegistry, system_atom, [entity_id]) do
+      [] -> Cosmos.SystemRegistry.register(entity_id, system_atom)
+    end
+  end
+
+  defp unregister_to_system(system_atom) do
+    Cosmos.SystemRegistry.unregister(system_atom)
   end
 
   defp via_tuple(entity_id) do

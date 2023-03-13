@@ -114,7 +114,7 @@ defmodule Cosmos.Entity do
   def delete_component(entity, component_id) when is_integer(component_id) do
     case Map.pop(entity.components, component_id, :not_found) do
       {:not_found, _} ->
-        entity
+        {entity, :not_found}
 
       {old_component, remaining_components} ->
         id_to_replace = old_component.id
@@ -124,11 +124,11 @@ defmodule Cosmos.Entity do
               into: %{},
               do: update_component_id(id_to_replace, comp_tuple)
 
-        %__MODULE__{
-          entity
-          | components: new_components,
-            auto_component_id: entity.auto_component_id - 1
-        }
+        {%__MODULE__{
+           entity
+           | components: new_components,
+             auto_component_id: entity.auto_component_id - 1
+         }, old_component}
     end
   end
 

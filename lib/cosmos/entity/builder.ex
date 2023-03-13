@@ -13,28 +13,30 @@ defmodule Cosmos.Entity.Builder do
   attributes is a map with string keys which can be used to set
   the values of the starting components added to the entity
   """
-  def build(:standard, attributes) do
-    Cosmos.Entity.new()
-    |> name(Map.get(attributes, "name", "jorsa"))
-    |> ichor(Map.get(attributes, "ichor"))
-    |> orichalcum(Map.get(attributes, "orichalcum"))
+  def build(:standard, entity_id, attributes) do
+    entity_server = Cosmos.Entity.Cache.server_process(entity_id)
+    name(entity_server, Map.get(attributes, "name", "jorsa"))
+    ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
+    orichalcum(entity_server, Map.get(attributes, "orichalcum", @starting_orichalcum))
   end
 
-  def name(entity, entity_name) do
-    entity
-    |> Cosmos.Entity.add_component(Cosmos.Entity.Component.new("name", :static, entity_name))
+  def name(entity_server, entity_name) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("name", :static, entity_name)
+    )
   end
 
-  def ichor(entity, ichor_amount \\ @starting_ichor) do
-    entity
-    |> Cosmos.Entity.add_component(
+  def ichor(entity_server, ichor_amount) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
       Cosmos.Entity.Component.new("ichor", :temporal_decay, ichor_amount)
     )
   end
 
-  def orichalcum(entity, orichalcum_amount \\ @starting_orichalcum) do
-    entity
-    |> Cosmos.Entity.add_component(
+  def orichalcum(entity_server, orichalcum_amount) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
       Cosmos.Entity.Component.new("orichalcum", :quantity, orichalcum_amount)
     )
   end

@@ -34,7 +34,6 @@ defmodule Cosmos.DatabaseWorker do
     data =
       case File.read(file_name(persist_dir, key)) do
         {:ok, contents} -> :erlang.binary_to_term(contents)
-        {:error, :enoent} -> :enoent
         _ -> nil
       end
 
