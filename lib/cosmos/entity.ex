@@ -53,6 +53,11 @@ defmodule Cosmos.Entity do
     |> Enum.map(fn {_, comp} -> comp end)
   end
 
+  def system_atoms(entity) do
+    entity.components
+    |> Enum.map(fn {_, comp} -> comp.type end)
+  end
+
   @doc """
   Adds a component to the entity
 

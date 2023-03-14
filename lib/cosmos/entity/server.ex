@@ -21,7 +21,22 @@ defmodule Cosmos.Entity.Server do
   @impl true
   def init(entity_id) do
     Logger.info("starting entity server for entity #{inspect(entity_id)}")
-    {:ok, {entity_id, Cosmos.Database.get(entity_id) || Cosmos.Entity.new()}}
+
+    entity =
+      case Cosmos.Database.get(entity_id) do
+        nil ->
+          Logger.info("entity #{entity_id} not found in database")
+          Logger.info("Creating new entity")
+          Cosmos.Entity.new()
+
+        entity ->
+          Logger.info("entity #{entity_id} found in database")
+          Logger.info("registering entity to systems")
+          register_all(entity_id, Cosmos.Entity.system_atoms(entity))
+          entity
+      end
+
+    {:ok, {entity_id, entity}}
   end
 
   @impl true
@@ -52,10 +67,19 @@ defmodule Cosmos.Entity.Server do
     end
   end
 
+  defp register_all(entity_id, system_atoms) do
+    Enum.map(system_atoms, fn sys_atom -> register_to_system(entity_id, sys_atom) end)
+  end
+
   defp register_to_system(entity_id, system_atom) do
     # only register to the system if not already present
     case Registry.match(Cosmos.SystemRegistry, system_atom, [entity_id]) do
-      [] -> Cosmos.SystemRegistry.register(entity_id, system_atom)
+      [] ->
+        Logger.info("registering #{entity_id} to system #{system_atom}")
+        Cosmos.SystemRegistry.register(entity_id, system_atom)
+
+      [_] ->
+        Logger.info("#{entity_id} already registered to system #{system_atom}")
     end
   end
 
