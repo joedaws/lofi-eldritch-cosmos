@@ -1,4 +1,11 @@
 defmodule Cosmos.SystemRegistry do
+  @moduledoc """
+  Each system which may affect an entity and it's components
+  is represented by a system_atom which is a key in the system
+  registry. Systems act on components by sending a message
+  to the registered processes with system_atom.
+  """
+
   require Logger
 
   def start_link do

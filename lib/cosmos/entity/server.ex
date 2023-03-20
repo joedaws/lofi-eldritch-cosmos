@@ -1,5 +1,11 @@
 defmodule Cosmos.Entity.Server do
-  use GenServer, restart: :temporary
+  @moduledoc """
+  Uses the transient restart option so that this server/worker
+  will be restarted when there is an abnormal exit reason.
+  This way we can retire servers when we don't need to update
+  an entity or that entity has faded from existence.
+  """
+  use GenServer, restart: :transient
   require Logger
 
   def start_link(entity_id) do
