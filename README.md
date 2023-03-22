@@ -23,8 +23,14 @@ components of an entity.
 
 # Current feature considerations 
 
-- Consider using [quantum](https://hexdocs.pm/quantum/readme.html) to schedule simulation-wide events and system-level updates.
-- Create `Cosmos.System` module which sends messages to `Cosmos.SystemRegsitry` to update beings according to a fixed interval of time and also can be stopped or started.
+- Create a `Behaviour` for systems. Create callbacks which all systems use.
+- [quantum](https://hexdocs.pm/quantum/readme.html) will be good for systems that need
+  to be run at intervals of minutes or hours (such as full backups maybe), but won't be
+  suitable for systems that need to run every n seconds. For this case, building a 
+  GenServer to handle the message will work. I plan to keep quantum integrated
+  and use it to schedule long term events.
+- Read [runtime configuration of quantum scheduler](https://hexdocs.pm/quantum/runtime-configuration.html)
+  This will allow for systems to be turned on and off.
 
 # Testing
 

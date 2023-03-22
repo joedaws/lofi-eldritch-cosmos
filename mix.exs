@@ -21,7 +21,8 @@ defmodule Cosmos.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ksuid, "~> 0.1.2"}
+      {:ksuid, "~> 0.1.2"},
+      {:quantum, "~> 3.0"}
     ]
   end
 end

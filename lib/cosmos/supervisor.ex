@@ -4,6 +4,7 @@ defmodule Cosmos.Supervisor do
       [
         Cosmos.ProcessRegistry,
         Cosmos.SystemRegistry,
+        Cosmos.System.Scheduler,
         Cosmos.Database,
         Cosmos.Entity.Cache
       ],
