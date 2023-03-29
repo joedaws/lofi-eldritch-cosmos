@@ -6,7 +6,8 @@ defmodule Cosmos.Supervisor do
         Cosmos.SystemRegistry,
         Cosmos.System.Scheduler,
         Cosmos.Database,
-        Cosmos.Entity.Cache
+        Cosmos.Entity.Cache,
+        Cosmos.System
       ],
       strategy: :one_for_one
     )

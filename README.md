@@ -5,7 +5,9 @@ Simulation of a cosmos of eldritch beings trying to learn cooperation and social
 The `Cosmos` application is a work-in-progress implementation of an entity component system (ECS)
 which will power the simulation.
 
-# Creating new entities
+# Cosmos ECS
+
+## Creating new entities
 
 Entities can be created using the module `Cosmos.Builder` module. To create a
 new being entity, with some of the standard attributes, use the build function
@@ -20,6 +22,15 @@ for definition of standard components).
 
 The second argument can overwrite the default values used to create the standard
 components of an entity.
+
+## Starting and stopping systems
+
+System are controlled by `GenServers` (see `Cosmos.System.TemporalDecay` for an example).
+The Genserver that powers each system is started when the Cosmos is started, but will 
+not act on components of entities until being turned on.
+Systems can be started or stopped using `Cosmos.System.on\1` and `Cosmos.System.off\1`
+where the argument is the system atom (e.g. `:temporal_decay`).
+
 
 # Current feature considerations 
 

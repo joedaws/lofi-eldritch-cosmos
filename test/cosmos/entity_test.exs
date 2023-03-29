@@ -27,4 +27,16 @@ defmodule Cosmos.EntityTest do
     assert first_component.name == "name"
     assert first_component.type == :static
   end
+
+  test "update component" do
+    entity = Cosmos.Entity.new()
+    comp1 = Cosmos.Entity.Component.new("name", :static, "jorsa")
+    comp2 = Cosmos.Entity.Component.new("ichor", :temporal_decay, 100)
+    entity = Cosmos.Entity.add_component(entity, comp1) |> Cosmos.Entity.add_component(comp2)
+
+    new_entity =
+      Cosmos.Entity.update_component(entity, 1, fn comp -> %{comp | value: "gor'lop"} end)
+
+    assert Enum.at(Cosmos.Entity.components(new_entity, "name"), 0).value == "gor'lop"
+  end
 end

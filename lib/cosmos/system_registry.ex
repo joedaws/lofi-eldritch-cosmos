@@ -4,6 +4,10 @@ defmodule Cosmos.SystemRegistry do
   is represented by a system_atom which is a key in the system
   registry. Systems act on components by sending a message
   to the registered processes with system_atom.
+
+  This registry is used so that worker processes for entities
+  can be contacted by dispatching to all processes associated
+  with a system atom.
   """
 
   require Logger

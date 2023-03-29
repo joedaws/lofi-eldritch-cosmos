@@ -24,6 +24,10 @@ defmodule Cosmos.Entity.Server do
     GenServer.cast(entity_server, {:delete_component, component_id})
   end
 
+  def update_component(entity_server, component_name, updater_fn) do
+    GenServer.cast(entity_server, {:update_component, component_name, updater_fn})
+  end
+
   @impl true
   def init(entity_id) do
     Logger.info("starting entity server for entity #{inspect(entity_id)}")
@@ -71,6 +75,16 @@ defmodule Cosmos.Entity.Server do
         Cosmos.Database.store(entity_id, new_entity)
         {:noreply, {entity_id, new_entity}}
     end
+  end
+
+  @impl true
+  def handle_cast({:update_component, component_type, updater_fn}, {entity_id, entity}) do
+    component_ids = for comp <- Cosmos.Entity.components(entity, component_type), do: comp.id
+
+    new_entity =
+      Enum.reduce(component_ids, entity, &Cosmos.Entity.update_component(&2, &1, updater_fn))
+
+    {:noreply, {entity_id, new_entity}}
   end
 
   defp register_all(entity_id, system_atoms) do
