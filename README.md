@@ -31,7 +31,6 @@ not act on components of entities until being turned on.
 Systems can be started or stopped using `Cosmos.System.on\1` and `Cosmos.System.off\1`
 where the argument is the system atom (e.g. `:temporal_decay`).
 
-
 # Current feature considerations 
 
 - Create a `Behaviour` for systems. Create callbacks which all systems use.

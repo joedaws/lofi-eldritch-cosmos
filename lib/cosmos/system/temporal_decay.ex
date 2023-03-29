@@ -62,7 +62,8 @@ defmodule Cosmos.System.TemporalDecay do
   defp update_components do
     Registry.dispatch(Cosmos.SystemRegistry, @system_atom, fn entries ->
       for {pid, _} <- entries,
-          do: send(pid, {:update_component, @system_atom, fn comp -> decrement(comp) end})
+          do:
+            GenServer.cast(pid, {:update_component, @system_atom, fn comp -> decrement(comp) end})
     end)
   end
 
