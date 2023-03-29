@@ -1,4 +1,4 @@
-defmodule Cosmos.Entity.Builder do
+defmodule Cosmos.Builder do
   @moduledoc """
   Used to format inital state of entities
 
@@ -9,8 +9,10 @@ defmodule Cosmos.Entity.Builder do
 
   @doc """
   adds name, ichor, and orichalcum components from scratch
+
+  returns the entity id of the newly created being
   """
-  def build({:new, :standard}, attributes) do
+  def build({:new, :being, :standard}, attributes) do
     new_entity = Cosmos.Entity.new()
     entity_id = new_entity.id
     Cosmos.Database.store(entity_id, new_entity)
@@ -18,6 +20,7 @@ defmodule Cosmos.Entity.Builder do
     name(entity_server, Map.get(attributes, "name", "jorsa"))
     ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
     orichalcum(entity_server, Map.get(attributes, "orichalcum", @starting_orichalcum))
+    entity_id
   end
 
   @doc """
@@ -26,7 +29,7 @@ defmodule Cosmos.Entity.Builder do
   attributes is a map with string keys which can be used to set
   the values of the starting components added to the entity
   """
-  def build({:existing, :standard}, entity_id, attributes) do
+  def build({:existing, :being, :standard}, entity_id, attributes) do
     entity_server = Cosmos.Entity.Cache.server_process(entity_id)
     name(entity_server, Map.get(attributes, "name", "jorsa"))
     ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
