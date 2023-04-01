@@ -1,6 +1,6 @@
-defmodule Cosmos.Builder do
+defmodule Eldritch.Being.Builder do
   @moduledoc """
-  Used to format inital state of entities
+  Used to create new instances of being entities
 
   Not intended for use after the initialization of an entity
   """

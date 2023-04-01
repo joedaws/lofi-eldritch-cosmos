@@ -2,23 +2,28 @@
 
 Simulation of a cosmos of eldritch beings trying to learn cooperation and social organization.
 
-The `Cosmos` application is a work-in-progress implementation of an entity component system (ECS)
+- The `Cosmos` application is a work-in-progress implementation of an entity component system (ECS)
 which will power the simulation.
+
+- Modules in the `Eldritch` name space are used to construct and interact with specific
+kinds of entities such as `Being`.
 
 # Cosmos ECS
 
 ## Creating new entities
 
-Entities can be created using the module `Cosmos.Builder` module. To create a
+Entities can be created using the a builder module. 
+For example, the `Eldritch.Being.Builder` module can be used to create a
 new being entity, with some of the standard attributes, use the build function
-with argument `{:new, :being, :standard}`. For example,
-
+with argument `{:new, :being, :standard}`. For example, after the Cosmos supervisor
+has been started one can run
 ``` elixir
-new_being = Cosmos.Builder.build({:new, :being, :standard}, %{"name" => "Gor'lop"})
+being_entity_id = Eldritch.Being.Builder.build({:new, :being, :standard}, %{"name" => "Gor'lop"})
 ```
-will create and spawn an entity worker for a being entity named "Gor'lop". The build
-method also adds the standard components for an entity (see function 
-for definition of standard components).
+to create and spawn an entity worker for a being entity named "Gor'lop". The being's
+`entity_id` is returned so that we can fetch it's worker process using
+`Cosmos.Entity.Cache.server_process(being_entity_id)`.
+The build function called in this way adds the standard components for a being.
 
 The second argument can overwrite the default values used to create the standard
 components of an entity.

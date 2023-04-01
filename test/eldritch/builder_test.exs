@@ -8,7 +8,7 @@ defmodule Cosmos.BuilderTest do
     Cosmos.Entity.Cache.start_link()
 
     being_id =
-      Cosmos.Builder.build(
+      Eldritch.Being.Builder.build(
         {:new, :being, :standard},
         %{
           "name" => "jorsa",
