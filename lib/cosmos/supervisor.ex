@@ -2,6 +2,7 @@ defmodule Cosmos.Supervisor do
   def start_link do
     Supervisor.start_link(
       [
+        Cosmos.Metrics,
         Cosmos.ProcessRegistry,
         Cosmos.SystemRegistry,
         Cosmos.System.Scheduler,

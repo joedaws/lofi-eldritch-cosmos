@@ -33,7 +33,7 @@ components of an entity.
 System are controlled by `GenServers` (see `Cosmos.System.TemporalDecay` for an example).
 The Genserver that powers each system is started when the Cosmos is started, but will 
 not act on components of entities until being turned on.
-Systems can be started or stopped using `Cosmos.System.on\1` and `Cosmos.System.off\1`
+Systems can be started or stopped using `Cosmos.System.on/1` and `Cosmos.System.off/1`
 where the argument is the system atom (e.g. `:temporal_decay`).
 
 # Current feature considerations 
