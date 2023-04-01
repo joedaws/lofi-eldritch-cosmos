@@ -9,7 +9,7 @@ defmodule Cosmos.EntityTest do
 
   test "components" do
     entity = Cosmos.Entity.new()
-    comp1 = Cosmos.Entity.Component.new("name", :static, "jorsa")
+    comp1 = Cosmos.Entity.Component.new("name", :attribute, "jorsa")
     comp2 = Cosmos.Entity.Component.new("ichor", :temporal_decay, 100)
     entity = Cosmos.Entity.add_component(entity, comp1) |> Cosmos.Entity.add_component(comp2)
 
@@ -25,12 +25,12 @@ defmodule Cosmos.EntityTest do
     assert Map.get(entity.components, 1) == %{comp1 | id: 1}
     assert new_entity.auto_component_id == 2
     assert first_component.name == "name"
-    assert first_component.type == :static
+    assert first_component.system == :attribute
   end
 
   test "update component" do
     entity = Cosmos.Entity.new()
-    comp1 = Cosmos.Entity.Component.new("name", :static, "jorsa")
+    comp1 = Cosmos.Entity.Component.new("name", :attribute, "jorsa")
     comp2 = Cosmos.Entity.Component.new("ichor", :temporal_decay, 100)
     entity = Cosmos.Entity.add_component(entity, comp1) |> Cosmos.Entity.add_component(comp2)
 

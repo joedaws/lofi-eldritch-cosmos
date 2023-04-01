@@ -12,7 +12,7 @@ defmodule Cosmos.Entity.CsvImporter do
       |> Stream.map(&String.replace(&1, "\n", ""))
       |> Stream.map(&String.split(&1, ","))
       |> Stream.map(&List.to_tuple/1)
-      |> Enum.map(fn {type, value} -> %{type: type, value: value} end)
+      |> Enum.map(fn {system, value} -> %{system: system, value: value} end)
       |> Cosmos.Entity.new()
 
     ichor_comp_id = Map.get(Enum.at(Cosmos.Entity.components(entity, "ichor"), 0), :id)

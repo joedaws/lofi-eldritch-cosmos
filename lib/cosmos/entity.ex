@@ -41,9 +41,9 @@ defmodule Cosmos.Entity do
     |> Enum.map(fn {_, comp} -> comp end)
   end
 
-  def components(entity, component_type) when is_atom(component_type) do
+  def components(entity, component_system) when is_atom(component_system) do
     entity.components
-    |> Stream.filter(fn {_, comp} -> comp.type == component_type end)
+    |> Stream.filter(fn {_, comp} -> comp.system == component_system end)
     |> Enum.map(fn {_, comp} -> comp end)
   end
 
@@ -55,7 +55,7 @@ defmodule Cosmos.Entity do
 
   def system_atoms(entity) do
     entity.components
-    |> Enum.map(fn {_, comp} -> comp.type end)
+    |> Enum.map(fn {_, comp} -> comp.system end)
   end
 
   @doc """
@@ -106,10 +106,10 @@ defmodule Cosmos.Entity do
 
       {:ok, old_component} ->
         old_component_id = old_component.id
-        old_component_type = old_component.type
+        old_component_system = old_component.system
 
         new_component =
-          %{id: ^old_component_id, type: ^old_component_type} = updater_fun.(old_component)
+          %{id: ^old_component_id, system: ^old_component_system} = updater_fun.(old_component)
 
         new_components = Map.put(entity.components, new_component.id, new_component)
         %__MODULE__{entity | components: new_components}

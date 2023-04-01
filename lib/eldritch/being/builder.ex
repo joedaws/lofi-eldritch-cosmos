@@ -39,7 +39,7 @@ defmodule Eldritch.Being.Builder do
   def name(entity_server, entity_name) do
     Cosmos.Entity.Server.add_component(
       entity_server,
-      Cosmos.Entity.Component.new("name", :static, entity_name)
+      Cosmos.Entity.Component.new("name", :attribute, entity_name)
     )
   end
 

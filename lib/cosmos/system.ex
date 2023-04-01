@@ -2,7 +2,9 @@ defmodule Cosmos.System do
   require Logger
 
   @systems %{
-    temporal_decay: Cosmos.System.TemporalDecay
+    temporal_decay: Cosmos.System.TemporalDecay,
+    attribute: Cosmos.System.Attribute,
+    quantity: Cosmos.System.Quantity
   }
 
   def start_link do
@@ -29,8 +31,21 @@ defmodule Cosmos.System do
     }
   end
 
+  @doc """
+  Raises an error if the given system atom is not a known one
+  """
+  def validate_system!(system) when is_atom(system) do
+    case system in Map.keys(@systems) do
+      true ->
+        {:ok, system}
+
+      false ->
+        :error
+    end
+  end
+
   defp worker_spec(system) do
     default_worker_spec = {system, []}
-    Supervisor.child_spec(default_worker_spec, id: 1)
+    Supervisor.child_spec(default_worker_spec, id: {system, 1})
   end
 end

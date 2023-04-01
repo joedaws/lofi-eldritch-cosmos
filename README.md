@@ -71,8 +71,8 @@ iex(4)> entity = Cosmos.Entity.Server.get(server)
   components: %{},
   auto_component_id: 1
 }
-iex(5)> comp = Cosmos.Entity.Component.new("name", :static, "johnson")
-%Cosmos.Entity.Component{name: "name", type: :static, value: "johnson", id: nil}
+iex(5)> comp = Cosmos.Entity.Component.new("name", :attribute, "johnson")
+%Cosmos.Entity.Component{name: "name", system: :attribute, value: "johnson", id: nil}
 iex(6)> Cosmos.Entity.Server.add_component(server, comp)
 :ok
 #PID<0.217.0> was chosen
