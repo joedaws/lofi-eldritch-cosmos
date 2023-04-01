@@ -57,7 +57,7 @@ defmodule Cosmos.Entity.Server do
   @impl true
   def handle_cast({:add_component, component}, {entity_id, entity}) do
     new_entity = Cosmos.Entity.add_component(entity, component)
-    Cosmos.Database.store(entity.id, new_entity)
+    Cosmos.Database.store(entity_id, new_entity)
 
     # register entity with system associated with new component's type
     register_to_system(entity_id, component.type)
@@ -84,6 +84,7 @@ defmodule Cosmos.Entity.Server do
     new_entity =
       Enum.reduce(component_ids, entity, &Cosmos.Entity.update_component(&2, &1, updater_fn))
 
+    Cosmos.Database.store(entity_id, new_entity)
     {:noreply, {entity_id, new_entity}}
   end
 
