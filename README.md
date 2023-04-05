@@ -10,6 +10,18 @@ kinds of entities such as `Being`.
 
 # Cosmos ECS
 
+## Starting the Cosmos ECS application
+
+Currently a naive implementation is used. A root supervisor is used to 
+start the necessary processes and can be started using
+
+``` elixir
+Cosmos.Supervisor.start_link()
+```
+
+This will start the various processes required to build entities, start 
+systems, and begin a simulation.
+
 ## Creating new entities
 
 Entities can be created using the a builder module. 
@@ -28,11 +40,50 @@ The build function called in this way adds the standard components for a being.
 The second argument can overwrite the default values used to create the standard
 components of an entity.
 
+## Systems acting on entities
+
+Each entity is comprised of components each of which have a attribute `system` whose
+value is an atom corresponding to one of the implemented systems in the Cosmos ECS.
+When adding or removing a component, the entity is subscribed or unsubscribed respectively
+from the associated system. For example, in the previous section a being with standard
+components whose name is "Gor'lop" was created. This being has the form:
+
+``` elixir
+%Cosmos.Entity{
+  id: "2NzPp7iRNFaaC10VMTpAgWvLxPK",
+  components: %{
+    1 => %Cosmos.Entity.Component{
+      name: "name",
+      system: :attribute,
+      value: "Gor'lop",
+      id: 1
+    },
+    2 => %Cosmos.Entity.Component{
+      name: "ichor",
+      system: :temporal_decay,
+      value: 100,
+      id: 2
+    },
+    3 => %Cosmos.Entity.Component{
+      name: "orichalcum",
+      system: :quantity,
+      value: 100,
+      id: 3
+    }
+  },
+  auto_component_id: 4
+}
+```
+
+Since this being has a component with the `:temporal_decay` system, it is subscribed
+to that system and the value `ichor` will decrease at a specified interval in time whenever
+the `:temporal_decay` system is turned on. 
+
 ## Starting and stopping systems
 
-System are controlled by `GenServers` (see `Cosmos.System.TemporalDecay` for an example).
-The Genserver that powers each system is started when the Cosmos is started, but will 
-not act on components of entities until being turned on.
+Systems are controlled by `GenServers` (see `Cosmos.System.TemporalDecay` for an example).
+The GenServer that powers each system is started when the Cosmos application starts up, 
+but will not act on components of entities until being turned on.
 Systems can be started or stopped using `Cosmos.System.on/1` and `Cosmos.System.off/1`
 where the argument is the system atom (e.g. `:temporal_decay`).
 
