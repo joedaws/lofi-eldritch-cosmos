@@ -2,11 +2,6 @@ defmodule Cosmos.BuilderTest do
   use ExUnit.Case
 
   test "build standard" do
-    Cosmos.ProcessRegistry.start_link()
-    Cosmos.SystemRegistry.start_link()
-    Cosmos.Database.start_link()
-    Cosmos.Entity.Cache.start_link()
-
     being_id =
       Eldritch.Being.Builder.build(
         {:new, :being, :standard},

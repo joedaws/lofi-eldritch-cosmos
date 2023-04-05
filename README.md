@@ -12,11 +12,9 @@ kinds of entities such as `Being`.
 
 ## Starting the Cosmos ECS application
 
-Currently a naive implementation is used. A root supervisor is used to 
-start the necessary processes and can be started using
-
-``` elixir
-Cosmos.Supervisor.start_link()
+The `Cosmos` application can be started using
+``` bash 
+iex -S mix
 ```
 
 This will start the various processes required to build entities, start 
