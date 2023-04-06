@@ -1,4 +1,4 @@
-defmodule Cosmos.BuilderTest do
+defmodule Eldritch.Being.BuilderTest do
   use ExUnit.Case
 
   test "build standard" do
