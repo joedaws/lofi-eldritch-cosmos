@@ -9,6 +9,12 @@
 # move said applications out of the umbrella.
 import Config
 
+config :cosmos, Cosmos.System.Scheduler,
+  jobs: [
+    # Every 1 minutes
+    {"* * * * *", fn -> Cosmos.Metrics.get() end}
+  ]
+
 # Sample configuration:
 #
 #     config :logger, :console,

@@ -4,27 +4,10 @@ defmodule Cosmos.Metrics do
   If true then metrics are collected, otherwise, they are not collected.
   The default is set to "true".
   """
-  use Task
   require Logger
 
-  def start_link(_arg), do: Task.start_link(&loop/0)
-
-  def on do
-    Application.put_env(:cosmos, :monitor_metrics, "true")
-  end
-
-  def off do
-    Application.put_env(:cosmos, :monitor_metrics, "false")
-  end
-
-  defp loop() do
-    Process.sleep(:timer.seconds(10))
-
+  def get() do
     Logger.info("#{inspect(collect_metrics())}")
-
-    if Application.get_env(:cosmos, :monitor_metrics, "true") == "true" do
-      loop()
-    end
   end
 
   defp collect_metrics() do
