@@ -12,7 +12,7 @@ defmodule Cosmos.System do
 
     children = Enum.map(Map.values(@systems), &worker_spec/1)
     Logger.info("#{inspect(__MODULE__)} starting systems")
-    Supervisor.start_link(children, strategy: :one_for_one)
+    Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
   end
 
   def on(system_atom) do

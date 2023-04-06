@@ -10,7 +10,8 @@ defmodule Cosmos.Supervisor do
         Cosmos.Entity.Cache,
         Cosmos.System
       ],
-      strategy: :one_for_one
+      strategy: :one_for_one,
+      name: __MODULE__
     )
   end
 end
