@@ -7,3 +7,21 @@ defmodule Cosmos.Entity.Component do
     %__MODULE__{name: name, system: system, value: value}
   end
 end
+
+defimpl String.Chars, for: Cosmos.Entity.Component do
+  def to_string(%Cosmos.Entity.Component{id: id, name: name, system: system, value: value}) do
+    cond do
+      is_integer(value) ->
+        "Component[id=#{id}, name=#{name}, system=#{system}, value=#{value}]"
+
+      is_bitstring(value) ->
+        "Component[id=#{id}, name=#{name}, system=#{system}, value=#{value}]"
+
+      is_map(value) ->
+        "Component[id=#{id}, name=#{name}, system=#{system}, map_value_size=#{length(Map.keys(value))}]"
+
+      true ->
+        "Component[id=#{id}, name=#{name}, system=#{system}, no string for value]"
+    end
+  end
+end

@@ -1,5 +1,7 @@
 defmodule Cosmos.Supervisor do
   def start_link do
+    # TODO add a task module which can be used
+    # as a start up script
     Supervisor.start_link(
       [
         Cosmos.ProcessRegistry,

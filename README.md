@@ -5,10 +5,26 @@ Simulation of a cosmos of eldritch beings trying to learn cooperation and social
 - The `Cosmos` application is a work-in-progress implementation of an entity component system (ECS)
 which will power the simulation.
 
-- Modules in the `Eldritch` name space are used to construct and interact with specific
-kinds of entities such as `Being`.
+- The `Eldritch` library application is used to construct and interact with specific
+kinds of entities such as `Being` or `Node` entity.
 
-# Cosmos ECS
+- The `Lofi` application is a simple web-server for interacting with the simulation.
+
+# Release Road map
+
+## Release 1
+
+- Beings (those associated with a single grimoire, the `Ooneirona` beings) can move around 
+  and have rudimentary memory.
+- Users can inspect the simulation but can't directly interact yet 
+
+## Release 2
+
+- Add additional class of being entities associated with a new grimoire
+- Being entities can make more complex decisions
+- attributes of node locations change over time.
+
+# Cosmos ECS and Eldritch library
 
 ## Starting the Cosmos ECS application
 
@@ -88,13 +104,14 @@ where the argument is the system atom (e.g. `:temporal_decay`).
 # Current feature considerations 
 
 - Create a `Behaviour` for systems. Create callbacks which all systems use.
-- [quantum](https://hexdocs.pm/quantum/readme.html) will be good for systems that need
-  to be run at intervals of minutes or hours (such as full backups maybe), but won't be
-  suitable for systems that need to run every n seconds. For this case, building a 
-  GenServer to handle the message will work. I plan to keep quantum integrated
-  and use it to schedule long term events.
-- Read [runtime configuration of quantum scheduler](https://hexdocs.pm/quantum/runtime-configuration.html)
-  This will allow for systems to be turned on and off.
+- Port the name generation code from [beings](https://github.com/joedaws/beings)
+- Create `Node` entities for representing physical places a being can exist in.
+- add system for beings to move and make decisions
+
+# Dependencies
+- [quantum](https://hexdocs.pm/quantum/readme.html) is used for systems that need
+  to be run at intervals of minutes or hours (such as full backups and health checks).
+- [cowboy](https://hexdocs/pm/cowboy/readme.html)
 
 # Testing
 
