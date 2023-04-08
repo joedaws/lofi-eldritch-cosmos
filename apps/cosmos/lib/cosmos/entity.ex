@@ -161,3 +161,9 @@ defimpl Collectable, for: Cosmos.Entity do
   defp into_callback(entity, :done), do: entity
   defp into_callback(_entity, :halt), do: :ok
 end
+
+defimpl String.Chars, for: Cosmos.Entity do
+  def to_string(%Cosmos.Entity{id: entity_id, components: components, auto_component_id: _}) do
+    "Entity[id=#{entity_id}, num_components=#{length(Map.keys(components))}]"
+  end
+end

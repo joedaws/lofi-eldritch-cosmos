@@ -12,6 +12,43 @@ defmodule Lofi.Web do
     )
   end
 
+  # Increase the ichor vitality of an entity
+  # curl -d '' 'http://localhost:5454/infuse?entity_id={entity_id}'
+  get "/infuse" do
+    conn = Plug.Conn.fetch_query_params(conn)
+    entity_id = Map.fetch!(conn.params, "entity_id")
+
+    entity_id
+    |> Cosmos.Entity.Cache.server_process()
+    |> Cosmos.Entity.Server.update_component("ichor", fn x ->
+      Cosmos.Entity.Component.update_numeric_value(x, Cosmos.ichor_infuse_amount())
+    end)
+
+    conn
+    |> Plug.Conn.put_resp_content_type("text/plain")
+    |> Plug.Conn.send_resp(200, "OK")
+  end
+
+  # curl 'http://localhost:5454/ichor?entity_id={entity_id}'
+  get "/ichor" do
+    conn = Plug.Conn.fetch_query_params(conn)
+    entity_id = Map.fetch!(conn.params, "entity_id")
+
+    # There should only ever at most one ichor component
+    ichor_component =
+      entity_id
+      |> Cosmos.Entity.Cache.server_process()
+      |> Cosmos.Entity.Server.get()
+      |> Cosmos.Entity.components("ichor")
+      |> Enum.at(0)
+
+    formatted_ichor = "#{ichor_component.value}"
+
+    conn
+    |> Plug.Conn.put_resp_content_type("text/plain")
+    |> Plug.Conn.send_resp(200, formatted_ichor)
+  end
+
   # curl 'http://localhost:5454/entity?entity_id={entity_id}'
   get "/entity" do
     conn = Plug.Conn.fetch_query_params(conn)
@@ -29,13 +66,8 @@ defmodule Lofi.Web do
     |> Plug.Conn.send_resp(200, formatted_entity)
   end
 
-  """
-  Route to add a component to a being
-
-  For example
-  curl -d '' 'http://localhost:5454/add_component?\
-  entity_id=1111&name=grimoire&system=attribute&value=oneirona'
-  """
+  # curl -d '' 'http://localhost:5454/add_component?\
+  # entity_id=1111&name=grimoire&system=attribute&value=oneirona'
 
   post "/add_component" do
     conn = Plug.Conn.fetch_query_params(conn)

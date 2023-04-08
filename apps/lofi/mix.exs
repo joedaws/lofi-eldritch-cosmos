@@ -28,7 +28,7 @@ defmodule Lofi.MixProject do
     [
       {:cowboy, "~> 2.9"},
       {:plug, "~> 1.14"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
+      {:plug_cowboy, "~> 2.0"},
       {:cosmos, in_umbrella: true}
     ]
   end

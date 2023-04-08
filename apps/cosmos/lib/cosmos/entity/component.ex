@@ -6,6 +6,13 @@ defmodule Cosmos.Entity.Component do
     {:ok, system} = Cosmos.System.validate_system!(system)
     %__MODULE__{name: name, system: system, value: value}
   end
+
+  @doc """
+  used to increase a numeric valued component
+  """
+  def update_numeric_value(comp, amount) when is_number(amount) do
+    %{comp | value: comp.value + amount}
+  end
 end
 
 defimpl String.Chars, for: Cosmos.Entity.Component do

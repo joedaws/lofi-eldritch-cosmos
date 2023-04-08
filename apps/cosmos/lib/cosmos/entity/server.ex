@@ -24,8 +24,8 @@ defmodule Cosmos.Entity.Server do
     GenServer.cast(entity_server, {:delete_component, component_id})
   end
 
-  def update_component(entity_server, component_name, updater_fn) do
-    GenServer.cast(entity_server, {:update_component, component_name, updater_fn})
+  def update_component(entity_server, component, updater_fn) do
+    GenServer.cast(entity_server, {:update_component, component, updater_fn})
   end
 
   @impl true
@@ -78,8 +78,21 @@ defmodule Cosmos.Entity.Server do
   end
 
   @impl true
-  def handle_cast({:update_component, component_system, updater_fn}, {entity_id, entity}) do
+  def handle_cast({:update_component, component_system, updater_fn}, {entity_id, entity})
+      when is_atom(component_system) do
     component_ids = for comp <- Cosmos.Entity.components(entity, component_system), do: comp.id
+
+    new_entity =
+      Enum.reduce(component_ids, entity, &Cosmos.Entity.update_component(&2, &1, updater_fn))
+
+    Cosmos.Database.store(entity_id, new_entity)
+    {:noreply, {entity_id, new_entity}}
+  end
+
+  @impl true
+  def handle_cast({:update_component, component_name, updater_fn}, {entity_id, entity})
+      when is_bitstring(component_name) do
+    component_ids = for comp <- Cosmos.Entity.components(entity, component_name), do: comp.id
 
     new_entity =
       Enum.reduce(component_ids, entity, &Cosmos.Entity.update_component(&2, &1, updater_fn))
