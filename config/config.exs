@@ -15,6 +15,8 @@ config :cosmos, Cosmos.System.Scheduler,
     {"* * * * *", fn -> Cosmos.Metrics.get() end}
   ]
 
+config :lofi, http_port: 5454
+
 # Sample configuration:
 #
 #     config :logger, :console,
@@ -22,3 +24,5 @@ config :cosmos, Cosmos.System.Scheduler,
 #       format: "$date $time [$level] $metadata$message\n",
 #       metadata: [:user_id]
 #
+#
+import_config "#{Mix.env()}.exs"

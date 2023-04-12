@@ -7,7 +7,9 @@ defmodule Cosmos.Entity do
     - :auto_component_id - used to set component ids when adding and removing components
                            from the entity
 
-  The names of the components are unique.
+  Note:
+    An entity can have at most one component with a given name.
+    An entity can have at most one component with an id.
   """
 
   @enforce_keys [:id, :components, :auto_component_id]
@@ -30,14 +32,14 @@ defmodule Cosmos.Entity do
     )
   end
 
+  @doc """
+  Returns list of components
+
+  An entity may have multiple components belonging to the same system
+  The 2 arity version returns all components belonging to the system atom
+  """
   def components(entity) do
     entity.components
-    |> Enum.map(fn {_, comp} -> comp end)
-  end
-
-  def components(entity, component_name) when is_bitstring(component_name) do
-    entity.components
-    |> Stream.filter(fn {_, comp} -> comp.name == component_name end)
     |> Enum.map(fn {_, comp} -> comp end)
   end
 
@@ -47,10 +49,20 @@ defmodule Cosmos.Entity do
     |> Enum.map(fn {_, comp} -> comp end)
   end
 
-  def components(entity, component_id) when is_integer(component_id) do
-    entity.components
-    |> Stream.filter(fn {_, comp} -> comp.id == component_id end)
-    |> Enum.map(fn {_, comp} -> comp end)
+  @doc """
+  An entity has at most one components with a given name
+  An entity has at most one components with a given id
+  """
+  def component(entity, component_name) when is_bitstring(component_name) do
+    key_value_pair = Enum.find(entity.components, fn {_, v} -> v.name == component_name end)
+
+    extract_value_from_tuple(key_value_pair)
+  end
+
+  def component(entity, component_id) when is_integer(component_id) do
+    key_value_pair = Enum.find(entity.components, fn {_, v} -> v.id == component_id end)
+
+    extract_value_from_tuple(key_value_pair)
   end
 
   def system_atoms(entity) do
@@ -146,6 +158,10 @@ defmodule Cosmos.Entity do
       id < id_to_replace -> {id, component}
       id > id_to_replace -> {id - 1, %{component | id: id - 1}}
     end
+  end
+
+  defp extract_value_from_tuple({_, v}) do
+    v
   end
 end
 

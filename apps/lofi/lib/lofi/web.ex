@@ -1,27 +1,32 @@
 defmodule Lofi.Web do
   use Plug.Router
+  require Logger
 
   plug(:match)
   plug(:dispatch)
 
   def child_spec(_arg) do
+    port = Application.fetch_env!(:lofi, :http_port)
+    Logger.info("lofi server port #{port}")
+
     Plug.Adapters.Cowboy.child_spec(
       scheme: :http,
-      options: [port: 5454],
+      options: [port: port],
       plug: __MODULE__
     )
   end
 
-  # Increase the ichor vitality of an entity
-  # curl -d '' 'http://localhost:5454/infuse?entity_id={entity_id}'
-  get "/infuse" do
+  # Can be used to increase or descrease a component with a numerical value
+  # curl 'http://localhost:5454/numeric_delta?entity_id={entity_id}&component_name=ichor&delta=10'
+  # delta can be positive or negative
+  get "/numeric_delta" do
     conn = Plug.Conn.fetch_query_params(conn)
     entity_id = Map.fetch!(conn.params, "entity_id")
 
     entity_id
     |> Cosmos.Entity.Cache.server_process()
     |> Cosmos.Entity.Server.update_component("ichor", fn x ->
-      Cosmos.Entity.Component.update_numeric_value(x, Cosmos.ichor_infuse_amount())
+      Cosmos.Entity.Component.update_numeric_value(x, 10)
     end)
 
     conn
@@ -29,8 +34,8 @@ defmodule Lofi.Web do
     |> Plug.Conn.send_resp(200, "OK")
   end
 
-  # curl 'http://localhost:5454/ichor?entity_id={entity_id}'
-  get "/ichor" do
+  # curl 'http://localhost:5454/components?entity_id={entity_id}'
+  get "/components" do
     conn = Plug.Conn.fetch_query_params(conn)
     entity_id = Map.fetch!(conn.params, "entity_id")
 
@@ -39,7 +44,7 @@ defmodule Lofi.Web do
       entity_id
       |> Cosmos.Entity.Cache.server_process()
       |> Cosmos.Entity.Server.get()
-      |> Cosmos.Entity.components("ichor")
+      |> Cosmos.Entity.component("ichor")
       |> Enum.at(0)
 
     formatted_ichor = "#{ichor_component.value}"

@@ -92,10 +92,9 @@ defmodule Cosmos.Entity.Server do
   @impl true
   def handle_cast({:update_component, component_name, updater_fn}, {entity_id, entity})
       when is_bitstring(component_name) do
-    component_ids = for comp <- Cosmos.Entity.components(entity, component_name), do: comp.id
+    component_id = Cosmos.Entity.component(entity, component_name).id
 
-    new_entity =
-      Enum.reduce(component_ids, entity, &Cosmos.Entity.update_component(&2, &1, updater_fn))
+    new_entity = Cosmos.Entity.update_component(entity, component_id, updater_fn)
 
     Cosmos.Database.store(entity_id, new_entity)
     {:noreply, {entity_id, new_entity}}

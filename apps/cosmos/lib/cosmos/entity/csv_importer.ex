@@ -15,7 +15,7 @@ defmodule Cosmos.Entity.CsvImporter do
       |> Enum.map(fn {system, value} -> %{system: system, value: value} end)
       |> Cosmos.Entity.new()
 
-    ichor_comp_id = Map.get(Enum.at(Cosmos.Entity.components(entity, "ichor"), 0), :id)
+    ichor_comp_id = Map.get(Cosmos.Entity.component(entity, "ichor"), :id)
 
     Cosmos.Entity.update_component(entity, ichor_comp_id, fn comp ->
       %{comp | value: String.to_integer(comp.value)}

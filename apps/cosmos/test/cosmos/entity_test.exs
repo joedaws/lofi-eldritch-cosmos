@@ -14,9 +14,9 @@ defmodule Cosmos.EntityTest do
     entity = Cosmos.Entity.add_component(entity, comp1) |> Cosmos.Entity.add_component(comp2)
 
     assert length(Cosmos.Entity.components(entity)) == 2
-    assert Cosmos.Entity.components(entity, "name") == [Map.put(comp1, :id, 1)]
+    assert Cosmos.Entity.component(entity, "name") == Map.put(comp1, :id, 1)
     assert Cosmos.Entity.components(entity, :temporal_decay) == [Map.put(comp2, :id, 2)]
-    assert Cosmos.Entity.components(entity, 1) == [Map.put(comp1, :id, 1)]
+    assert Cosmos.Entity.component(entity, 1) == Map.put(comp1, :id, 1)
     assert entity.auto_component_id == 3
 
     # when removing components, we should ensure that the auto_component ids are
@@ -37,6 +37,6 @@ defmodule Cosmos.EntityTest do
     new_entity =
       Cosmos.Entity.update_component(entity, 1, fn comp -> %{comp | value: "gor'lop"} end)
 
-    assert Enum.at(Cosmos.Entity.components(new_entity, "name"), 0).value == "gor'lop"
+    assert Cosmos.Entity.component(new_entity, "name").value == "gor'lop"
   end
 end
