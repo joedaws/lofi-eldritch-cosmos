@@ -103,11 +103,8 @@ where the argument is the system atom (e.g. `:temporal_decay`).
 
 # Current feature considerations 
 
-- Create proper test environment. Set test env to use different persist directory
-- Create a `Behaviour` for systems. Create callbacks which all systems use.
-- Port the name generation code from [beings](https://github.com/joedaws/beings)
-- Create `Node` entities for representing physical places a being can exist in.
-- add system for beings to move and make decisions
+View the [lofi-eldritch-cosmos project](https://github.com/users/joedaws/projects/4)
+for a list of what is currently being worked on.
 
 # Dependencies
 - [quantum](https://hexdocs.pm/quantum/readme.html) is used for systems that need
