@@ -17,7 +17,7 @@ defmodule Eldritch.Being.Builder do
     entity_id = new_entity.id
     Cosmos.Database.store(entity_id, new_entity)
     entity_server = Cosmos.Entity.Cache.server_process(entity_id)
-    name(entity_server, Map.get(attributes, "name", "jorsa"))
+    Eldritch.Common.name(entity_server, Map.get(attributes, "name", "jorsa"))
     ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
     orichalcum(entity_server, Map.get(attributes, "orichalcum", @starting_orichalcum))
     entity_id
@@ -31,22 +31,22 @@ defmodule Eldritch.Being.Builder do
   """
   def build({:existing, :being, :standard}, entity_id, attributes) do
     entity_server = Cosmos.Entity.Cache.server_process(entity_id)
-    name(entity_server, Map.get(attributes, "name", "jorsa"))
+    Eldritch.Common.name(entity_server, Map.get(attributes, "name", "jorsa"))
     ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
     orichalcum(entity_server, Map.get(attributes, "orichalcum", @starting_orichalcum))
-  end
-
-  def name(entity_server, entity_name) do
-    Cosmos.Entity.Server.add_component(
-      entity_server,
-      Cosmos.Entity.Component.new("name", :attribute, entity_name)
-    )
   end
 
   def ichor(entity_server, ichor_amount) do
     Cosmos.Entity.Server.add_component(
       entity_server,
       Cosmos.Entity.Component.new("ichor", :temporal_decay, ichor_amount)
+    )
+  end
+
+  def is_node(entity_server) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("is_being", :is_being, true)
     )
   end
 
