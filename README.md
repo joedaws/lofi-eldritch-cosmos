@@ -24,6 +24,11 @@ kinds of entities such as `Being` or `Node` entity.
 - Being entities can make more complex decisions
 - attributes of node locations change over time.
 
+# Current feature considerations 
+
+View the [lofi-eldritch-cosmos project](https://github.com/users/joedaws/projects/4)
+for a list of what is currently being worked on.
+
 # Cosmos ECS and Eldritch library
 
 ## Starting the Cosmos ECS application
@@ -100,11 +105,6 @@ The GenServer that powers each system is started when the Cosmos application sta
 but will not act on components of entities until being turned on.
 Systems can be started or stopped using `Cosmos.System.on/1` and `Cosmos.System.off/1`
 where the argument is the system atom (e.g. `:temporal_decay`).
-
-# Current feature considerations 
-
-View the [lofi-eldritch-cosmos project](https://github.com/users/joedaws/projects/4)
-for a list of what is currently being worked on.
 
 # Dependencies
 - [quantum](https://hexdocs.pm/quantum/readme.html) is used for systems that need
