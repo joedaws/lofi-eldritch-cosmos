@@ -14,7 +14,7 @@ defmodule Eldritch.Node.Builder do
     node_id = new_node.id
     Cosmos.Database.store(node_id, new_node)
     entity_server = Cosmos.Entity.Cache.server_process(node_id)
-    Eldritch.Common.name(entity_server, Map.get(attributes, "name", @default_node_name))
+    Eldritch.CommonComponent.name(entity_server, Map.get(attributes, "name", @default_node_name))
     is_node(entity_server)
     node_id
   end

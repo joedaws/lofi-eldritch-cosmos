@@ -1,51 +1,94 @@
 defmodule Cosmos.System do
+  use GenServer
   require Logger
 
-  @systems %{
-    temporal_decay: Cosmos.System.TemporalDecay,
-    attribute: Cosmos.System.Attribute,
-    quantity: Cosmos.System.Quantity
-  }
-
-  def start_link do
-    Logger.info("Starting systems")
-
-    children = Enum.map(Map.values(@systems), &worker_spec/1)
-    Logger.info("#{inspect(__MODULE__)} starting systems")
-    Supervisor.start_link(children, strategy: :one_for_one, name: __MODULE__)
+  def start_link(_) do
+    GenServer.start_link(__MODULE__, [], name: via_tuple())
   end
 
-  def on(system_atom) do
-    Map.get(@systems, system_atom).on()
+  def add(system_module, cycle_duration) do
+    GenServer.cast(via_tuple(), {:add, system_module, cycle_duration})
   end
 
-  def off(system_atom) do
-    Map.get(@systems, system_atom).off()
+  def remove(system_module) do
+    GenServer.cast(via_tuple(), {:remove, system_module})
   end
 
-  def child_spec(_) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, []},
-      type: :supervisor
-    }
+  def on(system_module) do
+    GenServer.cast(via_tuple(), {:on, system_module})
   end
 
-  @doc """
-  Raises an error if the given system atom is not a known one
-  """
-  def validate_system!(system) when is_atom(system) do
-    case system in Map.keys(@systems) do
+  def off(system_module) do
+    GenServer.cast(via_tuple(), {:off, system_module})
+  end
+
+  def valid_system?(system_module) do
+    GenServer.call(via_tuple(), {:valid_system, system_module})
+  end
+
+  # callbacks
+  def init(_) do
+    {:ok, MapSet.new()}
+  end
+
+  def handle_cast({:add, system_module, cycle_duration}, systems) when is_atom(system_module) do
+    updated_systems =
+      case MapSet.member?(systems, system_module) do
+        true ->
+          Logger.debug("System #{inspect(system_module)} already initialized")
+          systems
+
+        false ->
+          Cosmos.System.Supervisor.initialize_system(system_module, cycle_duration)
+          MapSet.put(systems, system_module)
+      end
+
+    {:noreply, updated_systems}
+  end
+
+  def handle_cast({:remove, system_module}, systems) when is_atom(system_module) do
+    updated_systems =
+      case MapSet.member?(systems, system_module) do
+        true -> MapSet.delete(systems, system_module)
+        false -> Logger.debug("System #{inspect(system_module)} not initialized")
+      end
+
+    {:noreply, updated_systems}
+  end
+
+  def handle_cast({:on, system_module}, systems) when is_atom(system_module) do
+    case MapSet.member?(systems, system_module) do
       true ->
-        {:ok, system}
+        Cosmos.System.Server.on(system_module)
 
       false ->
-        :error
+        Logger.debug(
+          "System #{inspect(system_module)} can not be turned on since it hasn't been initialized"
+        )
     end
+
+    {:noreply, systems}
   end
 
-  defp worker_spec(system) do
-    default_worker_spec = {system, []}
-    Supervisor.child_spec(default_worker_spec, id: {system, 1})
+  def handle_cast({:off, system_module}, systems) when is_atom(system_module) do
+    case MapSet.member?(systems, system_module) do
+      true ->
+        Cosmos.System.Server.off(system_module)
+
+      false ->
+        Logger.debug(
+          "System #{inspect(system_module)} can not be turned off since it hasn't been initialized"
+        )
+    end
+
+    {:noreply, systems}
+  end
+
+  def handle_call({:valid_system, system_module}, _from, systems) do
+    {:reply, MapSet.member?(systems, system_module), systems}
+  end
+
+  defp via_tuple() do
+    Cosmos.ProcessRegistry.via_tuple(__MODULE__)
   end
 end

@@ -9,6 +9,8 @@ defmodule Cosmos.Supervisor do
         Cosmos.System.Scheduler,
         Cosmos.Database,
         Cosmos.Entity.Cache,
+        # must come before Cosmos.System
+        Cosmos.System.Supervisor,
         Cosmos.System
       ],
       strategy: :one_for_one,
