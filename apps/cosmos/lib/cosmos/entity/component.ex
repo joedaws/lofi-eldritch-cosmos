@@ -3,8 +3,10 @@ defmodule Cosmos.Entity.Component do
   defstruct [:name, :system, :value, :id]
 
   def new(name, system, value) do
-    {:ok, system} = Cosmos.System.validate_system!(system)
-    %__MODULE__{name: name, system: system, value: value}
+    case Cosmos.System.valid_system?(system) do
+      true -> %__MODULE__{name: name, system: system, value: value}
+      false -> :not_valid_system
+    end
   end
 
   @doc """
