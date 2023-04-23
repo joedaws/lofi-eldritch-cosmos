@@ -53,7 +53,7 @@ defmodule Cosmos.System.Server do
 
   defp cycle(system_module, cycle_duration) do
     Logger.debug("#{inspect(system_module)} cycling")
-    system_module.update_components()
+    system_module.update_components(system_module)
     Process.send_after(self(), :cycle, cycle_duration)
   end
 

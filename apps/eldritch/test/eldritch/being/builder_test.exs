@@ -19,6 +19,9 @@ defmodule Eldritch.Being.BuilderTest do
     assert entity.components |> Map.get(1) |> Map.get(:value) == "jorsa"
 
     assert Cosmos.Entity.component(entity, "ichor") |> Map.get(:value) == 100
-    assert Cosmos.Entity.component(entity, "orichalcum") |> Map.get(:value) == 33
+
+    assert Cosmos.Entity.component(entity, "inventory")
+           |> Map.get(:value)
+           |> Map.get("orichalcum") == 33
   end
 end

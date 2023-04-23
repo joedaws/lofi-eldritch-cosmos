@@ -1,4 +1,4 @@
-defmodule Eldritch.Common do
+defmodule Eldritch.CommonComponent do
   @moduledoc """
   Defines function to create common components that many
   different kinds of entities may use
