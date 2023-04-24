@@ -43,7 +43,7 @@ defmodule Eldritch.Being.Builder do
     )
   end
 
-  def is_node(entity_server) do
+  def is_being(entity_server) do
     Cosmos.Entity.Server.add_component(
       entity_server,
       Cosmos.Entity.Component.new("is_being", :is_being, true)
