@@ -2,8 +2,8 @@
 
 Simulation of a cosmos of eldritch beings trying to learn cooperation and social organization.
 
-- The `Cosmos` application is a work-in-progress implementation of an entity component system (ECS)
-which will power the simulation.
+- The `Cosmos` application is a work-in-progress implementation of an
+   entity component system (ECS) which will power the simulation.
 
 - The `Eldritch` library application is used to construct and interact with specific
 kinds of entities such as `Being` or `Node` entity.

@@ -4,6 +4,9 @@ defmodule Eldritch.Application do
 
   def start(_, _) do
     Logger.info("starting up eldritch")
+    # run setup code
     Eldritch.Setup.start_link()
+
+    Eldritch.Supervisor.start_link()
   end
 end

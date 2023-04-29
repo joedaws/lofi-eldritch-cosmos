@@ -2,7 +2,7 @@ defmodule Eldritch.Node.Builder do
   @moduledoc """
   Used to create new instances of node entities
   """
-  @default_node_name "hill side tavern"
+  require Logger
 
   @doc """
   adds the name to a node entity
@@ -10,12 +10,21 @@ defmodule Eldritch.Node.Builder do
   returns the entity id of the newly created being
   """
   def build({:new, :node}, attributes) do
-    new_node = Cosmos.Entity.new()
-    node_id = new_node.id
-    Cosmos.Database.store(node_id, new_node)
-    entity_server = Cosmos.Entity.Cache.server_process(node_id)
-    Eldritch.CommonComponent.name(entity_server, Map.get(attributes, "name", @default_node_name))
-    is_node(entity_server)
+    {node_server, node_id} = get_new_node()
+
+    Eldritch.CommonComponent.name(
+      node_server,
+      Map.get(attributes, "name", Eldritch.Node.Name.generate_name())
+    )
+
+    is_node(node_server)
+
+    resource(
+      node_server,
+      Map.get(attributes, "resource_type", Eldritch.Node.Resource.get_random_resource_type()),
+      Map.get(attributes, "resource_yeild", Enum.random(1..10))
+    )
+
     node_id
   end
 
@@ -24,5 +33,30 @@ defmodule Eldritch.Node.Builder do
       entity_server,
       Cosmos.Entity.Component.new("is_node", :attribute, true)
     )
+  end
+
+  def resource(entity_server, resource_type, resource_yeild) do
+    if Eldritch.Node.Resource.valid_resource_type?(resource_type) and
+         Eldritch.Node.Resource.valid_resource_yield?(resource_yeild) do
+      Cosmos.Entity.Server.add_component(
+        entity_server,
+        Cosmos.Entity.Component.new("resource_type", :attribute, resource_type)
+      )
+
+      Cosmos.Entity.Server.add_component(
+        entity_server,
+        Cosmos.Entity.Component.new("resource_yeild", :attribute, resource_yeild)
+      )
+    else
+      Logger.error("Invalid resource_yeild or resource_type in builder for node")
+    end
+  end
+
+  defp get_new_node() do
+    new_node = Cosmos.Entity.new()
+    node_id = new_node.id
+    Cosmos.Database.store(node_id, new_node)
+    node_server = Cosmos.Entity.Cache.server_process(node_id)
+    {node_server, node_id}
   end
 end
