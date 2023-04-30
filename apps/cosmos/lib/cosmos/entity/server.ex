@@ -16,6 +16,10 @@ defmodule Cosmos.Entity.Server do
     GenServer.call(entity_server, {:get})
   end
 
+  def component(entity_server, component_name) do
+    GenServer.call(entity_server, {:component, component_name})
+  end
+
   def add_component(entity_server, component) do
     GenServer.cast(entity_server, {:add_component, component})
   end
@@ -52,6 +56,11 @@ defmodule Cosmos.Entity.Server do
   @impl true
   def handle_call({:get}, _from, {entity_id, entity}) do
     {:reply, entity, {entity_id, entity}}
+  end
+
+  @impl true
+  def handle_call({:component, component_name}, _from, {entity_id, entity}) do
+    {:reply, Cosmos.Entity.component(entity, component_name), {entity_id, entity}}
   end
 
   @impl true

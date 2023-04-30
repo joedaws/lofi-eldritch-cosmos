@@ -20,6 +20,7 @@ defmodule Eldritch.Being.Builder do
     Eldritch.CommonComponent.name(entity_server, Map.get(attributes, "name", "jorsa"))
     ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
     inventory(entity_server, Map.get(attributes, "orichalcum", @starting_orichalcum))
+    at_node(entity_server, Map.get(attributes, "at_node", nil))
     entity_id
   end
 
@@ -50,10 +51,25 @@ defmodule Eldritch.Being.Builder do
     )
   end
 
+  def at_node(entity_server, node_id) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("at_node", :attribute, node_id)
+    )
+
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("harvest", Eldritch.System.Harvest, true)
+    )
+  end
+
   def inventory(entity_server, orichalcum_amount) do
     Cosmos.Entity.Server.add_component(
       entity_server,
-      Cosmos.Entity.Component.new("inventory", :inventory, %{"orichalcum" => orichalcum_amount})
+      Cosmos.Entity.Component.new("inventory", :inventory, %{
+        "orichalcum" => orichalcum_amount,
+        "resources" => %{}
+      })
     )
   end
 end

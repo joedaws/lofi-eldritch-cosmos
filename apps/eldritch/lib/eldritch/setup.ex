@@ -11,7 +11,9 @@ defmodule Eldritch.Setup do
 
   defp initialize_systems() do
     Logger.info("initializing systems for Eldritch Application")
-    Cosmos.System.add(Eldritch.System.TemporalDecay, 3 * 1000)
+    # TODO make the cycle durations dependent on the Mix.env
+    Cosmos.System.add(Eldritch.System.TemporalDecay, 20 * 1000)
+    Cosmos.System.add(Eldritch.System.Harvest, 20 * 1000)
     Cosmos.System.add(:is_being, :none)
     Cosmos.System.add(:inventory, :none)
     Cosmos.System.add(:attribute, :none)

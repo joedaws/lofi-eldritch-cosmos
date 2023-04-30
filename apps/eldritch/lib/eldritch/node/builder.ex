@@ -22,8 +22,10 @@ defmodule Eldritch.Node.Builder do
     resource(
       node_server,
       Map.get(attributes, "resource_type", Eldritch.Node.Resource.get_random_resource_type()),
-      Map.get(attributes, "resource_yeild", Enum.random(1..10))
+      Map.get(attributes, "resource_yield", Enum.random(1..10))
     )
+
+    occupants(node_server)
 
     node_id
   end
@@ -35,9 +37,9 @@ defmodule Eldritch.Node.Builder do
     )
   end
 
-  def resource(entity_server, resource_type, resource_yeild) do
+  def resource(entity_server, resource_type, resource_yield) do
     if Eldritch.Node.Resource.valid_resource_type?(resource_type) and
-         Eldritch.Node.Resource.valid_resource_yield?(resource_yeild) do
+         Eldritch.Node.Resource.valid_resource_yield?(resource_yield) do
       Cosmos.Entity.Server.add_component(
         entity_server,
         Cosmos.Entity.Component.new("resource_type", :attribute, resource_type)
@@ -45,11 +47,18 @@ defmodule Eldritch.Node.Builder do
 
       Cosmos.Entity.Server.add_component(
         entity_server,
-        Cosmos.Entity.Component.new("resource_yeild", :attribute, resource_yeild)
+        Cosmos.Entity.Component.new("resource_yield", :attribute, resource_yield)
       )
     else
-      Logger.error("Invalid resource_yeild or resource_type in builder for node")
+      Logger.error("Invalid resource_yield or resource_type in builder for node")
     end
+  end
+
+  def occupants(entity_server) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("occupants", :attribute, MapSet.new())
+    )
   end
 
   defp get_new_node() do

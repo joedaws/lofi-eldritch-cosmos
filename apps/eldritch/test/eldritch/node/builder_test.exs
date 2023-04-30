@@ -8,7 +8,7 @@ defmodule Eldritch.Node.BuilderTest do
         %{
           "name" => "lost moss valley",
           "resource_type" => "bone",
-          "resource_yeild" => 10
+          "resource_yield" => 10
         }
       )
 
@@ -18,6 +18,6 @@ defmodule Eldritch.Node.BuilderTest do
     assert Cosmos.Entity.component(entity, "name") |> Map.get(:name) == "name"
     assert Cosmos.Entity.component(entity, "name") |> Map.get(:value) == "lost moss valley"
     assert Cosmos.Entity.component(entity, "resource_type") |> Map.get(:value) == "bone"
-    assert Cosmos.Entity.component(entity, "resource_yeild") |> Map.get(:value) == 10
+    assert Cosmos.Entity.component(entity, "resource_yield") |> Map.get(:value) == 10
   end
 end
