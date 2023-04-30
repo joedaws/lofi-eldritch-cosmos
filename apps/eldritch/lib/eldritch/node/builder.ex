@@ -9,7 +9,7 @@ defmodule Eldritch.Node.Builder do
 
   returns the entity id of the newly created being
   """
-  def build({:new, :node}, attributes) do
+  def build({:new, :node}, attributes \\ %{}) do
     {node_server, node_id} = get_new_node()
 
     Eldritch.CommonComponent.name(

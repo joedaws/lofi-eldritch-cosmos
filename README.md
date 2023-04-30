@@ -12,13 +12,16 @@ kinds of entities such as `Being` or `Node` entity.
 
 # Release Road map
 
-## Release 1
+Release naming conventions follow 
+[marquises from Ars Geotia](https://en.wikipedia.org/wiki/List_of_demons_in_the_Ars_Goetia#Marquises)
+
+## Release Gamigin 
 
 - Beings (those associated with a single grimoire, the `Ooneirona` beings) can move around 
   and have rudimentary memory.
 - Users can inspect the simulation but can't directly interact yet 
 
-## Release 2
+## Release Aamon
 
 - Add additional class of being entities associated with a new grimoire
 - Being entities can make more complex decisions
@@ -112,6 +115,10 @@ where the argument is the system atom (e.g. `:temporal_decay`).
 - [cowboy](https://hexdocs/pm/cowboy/readme.html)
 
 # Testing
+
+## Scripts to test out particular situations
+
+In the `scripts` directory are some elixir scripts that we can use to run some development tests.
 
 ## Testing database workers
 
