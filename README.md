@@ -114,11 +114,24 @@ where the argument is the system atom (e.g. `:temporal_decay`).
   to be run at intervals of minutes or hours (such as full backups and health checks).
 - [cowboy](https://hexdocs/pm/cowboy/readme.html)
 
+
+# Scripts for specific situations
+
+In the `scripts` directory are some elixir scripts that we can use to run specific small scale situations.
+These can be run by launching an `iex` session then compiling the script file. For example, first
+start the `iex` session with
+
+``` bash
+iex -S mix
+```
+
+then one can run the script with
+
+``` elixir
+iex> c "scripts/{path-to-script}.exs"
+```
+
 # Testing
-
-## Scripts to test out particular situations
-
-In the `scripts` directory are some elixir scripts that we can use to run some development tests.
 
 ## Testing database workers
 

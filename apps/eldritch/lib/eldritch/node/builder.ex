@@ -26,6 +26,7 @@ defmodule Eldritch.Node.Builder do
     )
 
     occupants(node_server)
+    neighbors(node_server)
 
     node_id
   end
@@ -33,7 +34,7 @@ defmodule Eldritch.Node.Builder do
   def is_node(entity_server) do
     Cosmos.Entity.Server.add_component(
       entity_server,
-      Cosmos.Entity.Component.new("is_node", :attribute, true)
+      Cosmos.Entity.Component.new("is_node", :is_node, true)
     )
   end
 
@@ -58,6 +59,13 @@ defmodule Eldritch.Node.Builder do
     Cosmos.Entity.Server.add_component(
       entity_server,
       Cosmos.Entity.Component.new("occupants", :attribute, MapSet.new())
+    )
+  end
+
+  def neighbors(entity_server) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("neighbors", :attribute, MapSet.new())
     )
   end
 

@@ -15,6 +15,7 @@ defmodule Eldritch.Setup do
     Cosmos.System.add(Eldritch.System.TemporalDecay, 20 * 1000)
     Cosmos.System.add(Eldritch.System.Harvest, 20 * 1000)
     Cosmos.System.add(:is_being, :none)
+    Cosmos.System.add(:is_node, :none)
     Cosmos.System.add(:inventory, :none)
     Cosmos.System.add(:attribute, :none)
   end
