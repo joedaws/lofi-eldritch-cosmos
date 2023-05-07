@@ -28,4 +28,6 @@ circles_lists =
   for c <- 1..num_circles,
   do: Enum.map(1..(num_nodes_per_circle), fn _ -> Eldritch.Node.Builder.build({:new, :node}) end)
 
-for circle_lists,
+
+# TODO connect nodes between different circles
+# for circle_lists,

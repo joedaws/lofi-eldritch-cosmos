@@ -17,7 +17,7 @@ Release naming conventions follow
 
 ## Release Gamigin 
 
-- Beings (those associated with a single grimoire, the `Ooneirona` beings) can move around 
+- Beings (those associated with a single grimoire) can move around 
   and have rudimentary memory.
 - Users can inspect the simulation but can't directly interact yet 
 
