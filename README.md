@@ -1,5 +1,4 @@
 # Lofi Eldritch beings to study with
-
 Simulation of a cosmos of eldritch beings trying to learn cooperation and social organization.
 
 - The `Cosmos` application is a work-in-progress implementation of an
@@ -17,7 +16,7 @@ Release naming conventions follow
 
 ## Release Gamigin 
 
-- Beings (those associated with a single grimoire) can move around 
+- Beings (only one "class" from a single grimoire) can move around 
   and have rudimentary memory.
 - Users can inspect the simulation but can't directly interact yet 
 

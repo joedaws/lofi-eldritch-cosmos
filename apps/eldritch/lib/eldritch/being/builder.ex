@@ -21,6 +21,8 @@ defmodule Eldritch.Being.Builder do
     ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
     inventory(entity_server, Map.get(attributes, "orichalcum", @starting_orichalcum))
     at_node(entity_server, Map.get(attributes, "at_node", nil))
+    # a new being does not start with observations, so no override is provided
+    observations(entity_server)
     entity_id
   end
 
@@ -56,6 +58,15 @@ defmodule Eldritch.Being.Builder do
       Cosmos.Entity.Component.new("inventory", :inventory, %{
         "orichalcum" => orichalcum_amount,
         "resources" => %{}
+      })
+    )
+  end
+
+  def observations(entity_server) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("observations", Eldritch.System.Observation, %{
+        "nodes_and_resources" => MapSet.new()
       })
     )
   end
