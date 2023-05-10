@@ -22,7 +22,8 @@ defmodule Eldritch.Being.Name do
       "Hysh",
       "Yn",
       "Oik",
-      "Veq"
+      "Veq",
+      "Gor"
     ],
     "core_prefix" => [
       "Do~",
@@ -35,7 +36,7 @@ defmodule Eldritch.Being.Name do
       "Ro~",
       "Ty~",
       "A~",
-      ""
+      "Lop~"
     ],
     "core_name" => [
       "Ga",
@@ -47,7 +48,8 @@ defmodule Eldritch.Being.Name do
       "Llach",
       "Vom",
       "Qak",
-      "Wol"
+      "Wol",
+      "Lop"
     ]
   }
 
