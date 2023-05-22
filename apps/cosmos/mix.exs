@@ -15,10 +15,7 @@ defmodule Cosmos.MixProject do
   def application do
     [
       extra_applications: [:logger, :crypto],
-      mod: {Cosmos.Application, []},
-      env: [
-        data_path: System.get_env("COSMOS_DATA_PATH")
-      ]
+      mod: {Cosmos.Application, []}
     ]
   end
 

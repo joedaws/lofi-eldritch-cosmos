@@ -3,6 +3,6 @@ defmodule CosmosTest do
   doctest Cosmos
 
   test "get application variable" do
-    assert Cosmos.get_data_path() != nil
+    assert Cosmos.get_persist_dir() != nil
   end
 end
