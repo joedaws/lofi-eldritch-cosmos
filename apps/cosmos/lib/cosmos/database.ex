@@ -4,9 +4,9 @@ defmodule Cosmos.Database do
   @num_workers 3
 
   def child_spec(_) do
-    database_dir = persist_dir()
-    Logger.info("Ensuring local directory #{database_dir} has been created")
-    File.mkdir_p!(database_dir)
+    data_path = Path.absname(persist_dir())
+    Logger.info("Ensuring local directory #{data_path} has been created")
+    File.mkdir_p!(data_path)
 
     :poolboy.child_spec(
       __MODULE__,

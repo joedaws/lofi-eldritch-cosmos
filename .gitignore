@@ -27,6 +27,7 @@ cosmos-*.tar
 
 # directory to store serialized entities
 persist/
+.data/
 
 # secrets!
 .env

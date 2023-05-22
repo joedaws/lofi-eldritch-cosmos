@@ -17,7 +17,7 @@ config :cosmos, Cosmos.System.Scheduler,
 
 config :lofi, http_port: 5454
 
-config :cosmos, local_db_dir: "/home/joe/dev/lofi-eldritch-cosmos-data/persist"
+config :cosmos, local_db_dir: "/var/lib/lofi-eldritch-cosmos/data/persist"
 
 config :cosmos, monitor_metrics: "true"
 
