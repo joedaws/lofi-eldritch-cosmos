@@ -33,6 +33,13 @@ defmodule Cosmos.Database do
     )
   end
 
+  def delete(key) do
+    :poolboy.transaction(
+      __MODULE__,
+      fn worker_pid -> Cosmos.DatabaseWorker.delete(worker_pid, key) end
+    )
+  end
+
   defp persist_dir do
     Cosmos.get_persist_dir()
   end

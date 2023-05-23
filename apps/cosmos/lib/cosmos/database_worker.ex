@@ -14,6 +14,10 @@ defmodule Cosmos.DatabaseWorker do
     GenServer.call(worker_pid, {:get, key})
   end
 
+  def delete(worker_pid, key) do
+    GenServer.cast(worker_pid, {:delete, key})
+  end 
+
   @impl true
   def init(persist_dir) do
     {:ok, persist_dir}
@@ -25,6 +29,12 @@ defmodule Cosmos.DatabaseWorker do
     |> File.write!(:erlang.term_to_binary(data))
 
     {:noreply, persist_dir}
+  end
+
+  @impl true
+  def handle_cast({:delete, key}, persist_dir) do
+    file_name(persist_dir, key)
+    |> File.rm!()
   end
 
   @impl true
