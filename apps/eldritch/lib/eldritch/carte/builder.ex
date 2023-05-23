@@ -13,7 +13,7 @@ defmodule Eldritch.Carte.Builder do
     {carte_server, carte_id} = get_new_carte()
 
     is_carte(carte_server)
-    flashcard(entity_server, query, response)
+    flashcard(carte_server, query, response)
 
     carte_id
   end
@@ -32,7 +32,7 @@ defmodule Eldritch.Carte.Builder do
     )
     Cosmos.Entity.Server.add_component(
       entity_server,
-      Cosmos.Entity.Component.new("answer", :attribute, answer)
+      Cosmos.Entity.Component.new("response", :attribute, response)
     )
   end
 
