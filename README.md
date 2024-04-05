@@ -7,29 +7,15 @@ Simulation of a cosmos of eldritch beings trying to learn cooperation and social
 - The `Eldritch` library application is used to construct and interact with specific
 kinds of entities such as `Being` or `Node` entity.
 
-- The `Lofi` application is a simple web-server for interacting with the simulation.
+- The `Lofi` application is a simple cowboy and plug based server for interacting with the simulation.
 
 # Release Road map
 
-Release naming conventions follow 
-[marquises from Ars Geotia](https://en.wikipedia.org/wiki/List_of_demons_in_the_Ars_Goetia#Marquises)
 
 ## Release Gamigin 
 
-- Beings (only one "class" from a single grimoire) can move around 
-  and have rudimentary memory.
-- Users can inspect the simulation but can't directly interact yet 
-
-## Release Aamon
-
-- Add additional class of being entities associated with a new grimoire
-- Being entities can make more complex decisions
-- attributes of node locations change over time.
-
-# Current feature considerations 
-
-View the [lofi-eldritch-cosmos project](https://github.com/users/joedaws/projects/4)
-for a list of what is currently being worked on.
+- User can create beings with a information incantation
+- Entities push a message to user have the interval time has elasped
 
 # Cosmos ECS and Eldritch library
 
@@ -160,3 +146,9 @@ iex(6)> Cosmos.Entity.Server.add_component(server, comp)
 :ok
 #PID<0.217.0> was chosen
 ```
+
+# Appendix
+
+## Naming convention for releases
+Release names can be chosen from 
+[marquises from Ars Geotia](https://en.wikipedia.org/wiki/List_of_demons_in_the_Ars_Goetia#Marquises)
