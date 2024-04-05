@@ -23,6 +23,7 @@ defmodule Eldritch.Being.Builder do
     at_node(entity_server, Map.get(attributes, "at_node", nil))
     # a new being does not start with observations, so no override is provided
     observations(entity_server)
+    incantation(entity_server)
     entity_id
   end
 
@@ -67,6 +68,25 @@ defmodule Eldritch.Being.Builder do
       entity_server,
       Cosmos.Entity.Component.new("observations", Eldritch.System.Observation, %{
         "nodes_and_resources" => MapSet.new()
+      })
+    )
+  end
+
+  @doc """
+  an incantation is like a flash card, it has a front and a back.
+
+  The user can chose wether to fill in the front or back.
+
+  A single sided flash card is a "declarative Incantation"
+  A two-sided flash card is a "flash Incantation"
+  """
+  def incantation(entity_server) do
+    # initialize front
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("Incantation", Eldritch.System.Remind, %{
+        "front" => "Breath life into the being with this Incantation",
+        "back" => "Secrets can strengthen life force"
       })
     )
   end

@@ -21,5 +21,7 @@ defmodule Eldritch.Setup do
     Cosmos.System.add(:attribute, :none)
     # make slightly shorter than Harvest
     Cosmos.System.add(Eldritch.System.Observation, 19 * 1000)
+    # Need to make remind system configurable
+    Cosmos.System.add(Eldritch.System.Remind, 3 * 1000)
   end
 end

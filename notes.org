@@ -28,7 +28,8 @@ can confirm these associations.
 
 ** Flash card mode
 In this mode the beings store information and they themselves act as
-"cards" which are stacked into a deck. The user
+"cards" which are stacked into a deck. The user can also choose
+to use multiple choice mode. Where the
 
 ** Relax mode
 In relax mode, a relaxing scene of a studying researcher reading
@@ -40,12 +41,24 @@ Each being has a =png= portrait (probably pixel art for now).
 
 ** Incantation
 This is the bit of information that the user inputs as a string that will be
-recalled during the interval.
+recalled during the interval. There are two types of incantations
+*** Declarative Incancation
+This corresponds to a one sided flash card. The purpose is to remind you of something
+
+*** Flash Incancation
+This corresponds to a two sided flash card. The purpose on the front is to
+prime your memory to recall the details on the back.
 
 ** Interval
 How often the user wants the information to be resurfaced.
 
 
+** Ichor
+This is a number which represents the life force of a being.
+It grows the number of times that you get retrieve the information.
+It grows even faster when you use flashcard mode
+
+* Systems
 
 * Technologies
 ** Supabase
