@@ -1,0 +1,15 @@
+defmodule Eldritch.Being do
+  @moduledoc """
+  This module is responsible for high level interactions
+  with generic beings.
+  """
+
+  @doc """
+  Get a being given it's being/entity id.
+  """
+  def get(being_id) do
+    Cosmos.Entity.Cache.server_process(being_id)
+    |> Cosmos.Entity.Server.get()
+  end
+  
+end
