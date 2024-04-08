@@ -2,7 +2,12 @@ defmodule Lofi.Web do
   use Plug.Router
   require Logger
 
+  # Using Plug.Logger for logging request information
+  plug(Plug.Logger)
   plug(:match)
+
+  plug(Plug.Parsers, parsers: [:json], json_decoder: Poison)
+
   plug(:dispatch)
 
   def child_spec(_arg) do
@@ -14,6 +19,26 @@ defmodule Lofi.Web do
       options: [port: port],
       plug: __MODULE__
     )
+  end
+
+  get "/ping" do
+    send_resp(conn, 200, Poison.encode!(
+          %{"message" => "You have reached the lofi-eldritch-cosmos"})
+    )
+  end
+
+  get "/beings" do
+    response = Cosmos.query("beings")
+    send_resp(conn, 200, Poison.encode!(response))
+  end
+
+  get "/being" do
+    conn = Plug.Conn.fetch_query_params(conn)
+    being_id = Map.fetch!(conn.params, "id")
+    response =
+      Cosmos.Entity.Cache.server_process(being_id)
+      |> Cosmos.Entity.Server.get()
+    send_resp(conn, 200, Poison.encode!(response))
   end
 
   # Can be used to increase or descrease a component with a numerical value
@@ -54,21 +79,10 @@ defmodule Lofi.Web do
     |> Plug.Conn.send_resp(200, formatted_ichor)
   end
 
-  # curl 'http://localhost:5454/entity?entity_id={entity_id}'
-  get "/entity" do
-    conn = Plug.Conn.fetch_query_params(conn)
-    entity_id = Map.fetch!(conn.params, "entity_id")
-
-    entity =
-      entity_id
-      |> Cosmos.Entity.Cache.server_process()
-      |> Cosmos.Entity.Server.get()
-
-    formatted_entity = to_string(entity)
-
-    conn
-    |> Plug.Conn.put_resp_content_type("text/plain")
-    |> Plug.Conn.send_resp(200, formatted_entity)
+  post "/being" do
+    being_id = Eldritch.Being.Builder.build({:new, :being, :standard})
+    response =  %{"being_id" => being_id}
+    send_resp(conn, 200, Poison.encode!(response))
   end
 
   # curl -d '' 'http://localhost:5454/add_component?\
@@ -99,4 +113,5 @@ defmodule Lofi.Web do
   match _ do
     Plug.Conn.send_resp(conn, 404, "not found")
   end
+
 end

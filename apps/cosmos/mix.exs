@@ -24,7 +24,8 @@ defmodule Cosmos.MixProject do
     [
       {:ksuid, "~> 0.1"},
       {:poolboy, "~> 1.5"},
-      {:quantum, "~> 3.0"}
+      {:quantum, "~> 3.0"},
+      {:poison, "~> 5.0"}
     ]
   end
 end

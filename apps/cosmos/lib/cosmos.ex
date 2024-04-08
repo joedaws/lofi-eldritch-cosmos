@@ -5,6 +5,10 @@ defmodule Cosmos do
 
   def get_persist_dir() do
     Application.fetch_env!(:cosmos, :local_db_dir)
-    |> Path.absname()
+  end
+
+  def query(filter) do
+    Cosmos.Database.query(filter)
+    |> Enum.join(", ")
   end
 end

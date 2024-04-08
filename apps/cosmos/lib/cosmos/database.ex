@@ -40,6 +40,13 @@ defmodule Cosmos.Database do
     )
   end
 
+  def query(filter) do
+    :poolboy.transaction(
+      __MODULE__,
+     fn worker_pid -> Cosmos.DatabaseWorker.query(worker_pid, filter) end
+    )
+  end
+
   defp persist_dir do
     Cosmos.get_persist_dir()
   end

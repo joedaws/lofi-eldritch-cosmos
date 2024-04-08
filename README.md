@@ -9,8 +9,12 @@ kinds of entities such as `Being` or `Node` entity.
 
 - The `Lofi` application is a simple cowboy and plug based server for interacting with the simulation.
 
-# Release Road map
+# TODO
 
+- change the local persistance directory to use temporary one that will only 
+exist during the life time of the Cosmos Application.
+
+# Release Road map
 
 ## Release Gamigin 
 

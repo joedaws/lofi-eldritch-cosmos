@@ -16,7 +16,11 @@ defmodule Cosmos.DatabaseWorker do
 
   def delete(worker_pid, key) do
     GenServer.cast(worker_pid, {:delete, key})
-  end 
+  end
+
+  def query(worker_pid, filter) do
+    GenServer.call(worker_pid, {:query, filter})
+  end
 
   @impl true
   def init(persist_dir) do
@@ -47,6 +51,24 @@ defmodule Cosmos.DatabaseWorker do
 
     Logger.info("#{inspect(self())}: fetching #{key}")
     {:reply, data, persist_dir}
+  end
+
+  @impl true
+  def handle_call({:query, filter}, _from, persist_dir) do
+    # In the local storage setup we can find all beings by
+    # inspecting the file names in the persist_dir
+    # It might be empty.
+    result =
+      case filter do
+        "beings" ->
+          Path.wildcard(Path.join(persist_dir, "*"))
+          |> Enum.map(fn x -> Path.basename(x) end)
+
+        _ ->
+          []
+      end
+
+    {:reply, result, persist_dir}
   end
 
   defp file_name(persist_dir, key) do
