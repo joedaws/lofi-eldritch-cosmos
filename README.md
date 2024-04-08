@@ -19,7 +19,7 @@ exist during the life time of the Cosmos Application.
 ## Release Gamigin 
 
 - User can create beings with a information incantation
-- Entities push a message to user have the interval time has elasped
+- Entities push a message to user have the interval time has elapsed
 
 # Cosmos ECS and Eldritch library
 
@@ -32,6 +32,32 @@ iex -S mix
 
 This will start the various processes required to build entities, start 
 systems, and begin a simulation.
+
+## Basic interaction with the lofi-eldritch-cosmos
+
+To create a new being (a standard one with only default values for it's components)
+
+``` bash
+curl -X POST http://localhost:5454/being
+```
+
+This will return something like
+
+``` json
+{"being_id": "2enp3IaLemeeiMDZYj3oJ0ukJ9U"}
+```
+
+which is the entity id for the being created. Now we can query for all existing beings with
+
+``` bash
+curl -X GET http://localhost:5454/beings
+```
+
+and can get the full state of the being with
+
+``` bash
+curl -X GET http://localhost:5454/being?id=2enp3IaLemeeiMDZYj3oJ0ukJ9U
+```
 
 ## Creating new entities
 
