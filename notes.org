@@ -1,65 +1,73 @@
 #+title: Notes
 
-* Spaced Repetition
+* Product
+** Spaced Repetition
 In this version of the application, the beings help the user learn
 using techniques of spaced repetition. The user creates a new being
 through a UI. This being is holds a core piece of knowledge that will
 be reinforced with spaced repetition.
 
-** Knowledge recording mode
+*** Knowledge recording mode
 User creates beings instilled with the knowledge they want to recall
 at certain intervals. They can choose the interval (should be mutable by user).
 This is freeform text creation.
 
-** Knowledge pack mode
+*** Knowledge pack mode
 User can select from an existing stock pile of beings.
-*** Math Packs
+**** Math Packs
 - basic calculus rules
 - multiplication tables
 
-*** Vocabulary Packs
+**** Vocabulary Packs
 - different level words
 
-** Knowledge web mode
+*** Knowledge web mode
 While not in use, the beings they create occasionally interact with each other.
 During this interaction they can decide to build a bond or not. Sometimes this
 will be interesting because different topics will start interacting. Users
 can confirm these associations.
 
-** Flash card mode
+*** Flash card mode
 In this mode the beings store information and they themselves act as
 "cards" which are stacked into a deck. The user can also choose
 to use multiple choice mode. Where the
 
-** Relax mode
+*** Relax mode
 In relax mode, a relaxing scene of a studying researcher reading
 an ancient eldritch tome is shown. Every interval, a being is summoned
 
-* Beings
-** Portrait
+** Beings
+*** Portrait
 Each being has a =png= portrait (probably pixel art for now).
 
-** Incantation
+*** Incantation
 This is the bit of information that the user inputs as a string that will be
 recalled during the interval. There are two types of incantations
-*** Declarative Incancation
+**** Declarative Incancation
 This corresponds to a one sided flash card. The purpose is to remind you of something
 
-*** Flash Incancation
+**** Flash Incancation
 This corresponds to a two sided flash card. The purpose on the front is to
 prime your memory to recall the details on the back.
 
-** Interval
+*** Interval
 How often the user wants the information to be resurfaced.
 
-
-** Ichor
+*** Ichor
 This is a number which represents the life force of a being.
 It grows the number of times that you get retrieve the information.
 It grows even faster when you use flashcard mode
 
-* Systems
+** Systems
 
 * Technologies
+** Architecture
+** Start up
+To start the application what is required.
+
+Need to load the existing beings from the database.
+Need to start the relevant systems
+
+What scripts are run during start up?
 ** Supabase
 This might be awesome since it includes auth

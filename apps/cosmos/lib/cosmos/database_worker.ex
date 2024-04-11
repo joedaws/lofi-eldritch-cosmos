@@ -58,14 +58,16 @@ defmodule Cosmos.DatabaseWorker do
     # In the local storage setup we can find all beings by
     # inspecting the file names in the persist_dir
     # It might be empty.
+    # When no filter terms match we simply return empty json
     result =
       case filter do
         "beings" ->
           Path.wildcard(Path.join(persist_dir, "*"))
           |> Enum.map(fn x -> Path.basename(x) end)
+          |> beings_query_map()
 
         _ ->
-          ["None"]
+          %{}
       end
 
     {:reply, result, persist_dir}
@@ -73,5 +75,9 @@ defmodule Cosmos.DatabaseWorker do
 
   defp file_name(persist_dir, key) do
     Path.join(persist_dir, to_string(key))
+  end
+
+  defp beings_query_map(being_ids) do
+    %{"being_ids"=>being_ids}
   end
 end
