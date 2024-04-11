@@ -51,10 +51,7 @@ defmodule Lofi.Web do
   """
   get "/beings" do
     response = Eldritch.query("beings")
-    case response do
-      "" -> send_resp(conn, 200, Poison.encode!("No beings"))
-      beings -> send_resp(conn, 200, Poison.encode!(response))
-    end
+    send_resp(conn, 200, Poison.encode!(response))
   end
 
   @doc """
