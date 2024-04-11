@@ -77,15 +77,15 @@ defmodule Eldritch.Being.Builder do
 
   The user can chose wether to fill in the front or back.
 
-  A single sided flash card is a "declarative Incantation"
-  A two-sided flash card is a "flash Incantation"
+  A single sided flash card is a "declarative incantation"
+  A two-sided flash card is a "flash incantation"
   """
   def incantation(entity_server) do
     # initialize front
     Cosmos.Entity.Server.add_component(
       entity_server,
-      Cosmos.Entity.Component.new("Incantation", Eldritch.System.Remind, %{
-        "front" => "Breath life into the being with this Incantation",
+      Cosmos.Entity.Component.new("incantation", Eldritch.System.Remind, %{
+        "front" => "Breath life into the being with this incantation",
         "back" => "Secrets can strengthen life force"
       })
     )

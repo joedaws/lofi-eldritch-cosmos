@@ -1,4 +1,4 @@
-defmodule Cosmos.Eldritch do
+defmodule Eldritch do
 
   @doc """
 

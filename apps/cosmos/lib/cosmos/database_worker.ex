@@ -65,7 +65,7 @@ defmodule Cosmos.DatabaseWorker do
           |> Enum.map(fn x -> Path.basename(x) end)
 
         _ ->
-          []
+          ["None"]
       end
 
     {:reply, result, persist_dir}

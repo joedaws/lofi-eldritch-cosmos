@@ -8,7 +8,10 @@ defmodule Cosmos do
   end
 
   def query(filter) do
-    Cosmos.Database.query(filter)
-    |> Enum.join(", ")
+    result = Cosmos.Database.query(filter)
+    case result do
+      "" -> "None"
+      _ -> Enum.join(result, ", ")
+    end
   end
 end
