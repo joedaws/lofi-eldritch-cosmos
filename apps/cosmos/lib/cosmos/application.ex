@@ -5,14 +5,14 @@ defmodule Cosmos.Application do
   @data_dir_app_name "lofi-eldritch-cosmos"
 
   def start(_, _) do
-    Application.put_env(:cosmos, :local_db_dir, data_dir())
+    Application.put_env(:cosmos, :local_db_dir, user_data_dir())
     Cosmos.Supervisor.start_link()
   end
 
   @doc """
   non-configuration, persistent data goes here
   """
-  def data_dir do
+  def user_data_dir do
     System.get_env("XDG_DATA_HOME")
     |> fallback(Path.join([System.user_home!(), ".local", "share"]))
     |> Path.join(@data_dir_app_name)
