@@ -1,33 +1,33 @@
 # Lofi Eldritch beings to study with
 Simulation of a cosmos of eldritch beings trying to learn cooperation and social organization.
 
-- The `Cosmos` application is a work-in-progress implementation of an
-   entity component system (ECS) which will power the simulation.
+- The `Cosmos` application is an implementation of an
+  entity component system (ECS) which is responsible for managing the data related to
+  the simulation.
 
 - The `Eldritch` library application is used to construct and interact with specific
-kinds of entities such as `Being` or `Node` entity.
+  kinds of entities such as `Being` or `Node` entity.
 
-- The `Lofi` application is a simple cowboy and plug based server for interacting with the simulation.
-
-# TODO
-
-- change the local persistance directory to use temporary one that will only 
-exist during the life time of the Cosmos Application.
+- The `Lofi` application is a simple cowboy and plug based server for interacting with 
+  the simulation via http.
 
 # Release Road map
 
 ## Release Gamigin 
 
-- User can create beings with a information incantation
-- Entities push a message to user have the interval time has elapsed
+- Computational Lacanian dynamics
 
-# Cosmos ECS and Eldritch library
+- Start up script making the landscape
 
-## Starting the Cosmos ECS application
+- Start up script making beings
+
+- Start up script clearing all beings from disk
+
+# Starting the Cosmos ECS application
 
 The `Cosmos` application can be started using
 ``` bash 
-iex -S mix
+mix run --no-halt
 ```
 
 This will start the various processes required to build entities, start 
@@ -35,7 +35,7 @@ systems, and begin a simulation.
 
 ## Basic interaction with the lofi-eldritch-cosmos
 
-To create a new being (a standard one with only default values for it's components)
+  * [ ] To create a new being (a standard one with only default values for it's components)
 
 ``` bash
 curl -X POST http://localhost:5454/being
@@ -59,7 +59,9 @@ and can get the full state of the being with
 curl -X GET http://localhost:5454/being?id=2enp3IaLemeeiMDZYj3oJ0ukJ9U
 ```
 
-## Creating new entities
+# Using the Eldritch library application 
+
+## Creating entities
 
 Entities can be created using the a builder module. 
 For example, the `Eldritch.Being.Builder` module can be used to create a
@@ -129,21 +131,18 @@ where the argument is the system atom (e.g. `:temporal_decay`).
   to be run at intervals of minutes or hours (such as full backups and health checks).
 - [cowboy](https://hexdocs/pm/cowboy/readme.html)
 
+# Scripts
 
-# Scripts for specific situations
-
-In the `scripts` directory are some elixir scripts that we can use to run specific small scale situations.
-These can be run by launching an `iex` session then compiling the script file. For example, first
-start the `iex` session with
+To seed the simulation use 
 
 ``` bash
-iex -S mix
+mix cosmos.seed
 ```
 
-then one can run the script with
+To clear the simulation use 
 
 ``` elixir
-iex> c "scripts/{path-to-script}.exs"
+mix cosmos.destroy
 ```
 
 # Testing
