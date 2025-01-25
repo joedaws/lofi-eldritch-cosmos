@@ -11,17 +11,28 @@ Simulation of a cosmos of eldritch beings trying to learn cooperation and social
 - The `Lofi` application is a simple cowboy and plug based server for interacting with 
   the simulation via http.
 
+# Running the simulation
+
+To seed the simulation use 
+
+``` elixir 
+mix cosmos.seed
+```
+
+To clear the simulation use the destroy script (which will ask before destroying)
+
+``` elixir
+mix cosmos.destroy
+```
+
 # Release Road map
 
 ## Release Gamigin 
 
-- Computational Lacanian dynamics
-
-- Start up script making the landscape
-
-- Start up script making beings
-
-- Start up script clearing all beings from disk
+- [ ]Computational Lacanian dynamics
+- [x] Start up script making a being and node
+- [x] Script to destory the cosmos so that one can start over
+- [ ] Start up script making the landscape
 
 # Starting the Cosmos ECS application
 
@@ -130,20 +141,6 @@ where the argument is the system atom (e.g. `:temporal_decay`).
 - [quantum](https://hexdocs.pm/quantum/readme.html) is used for systems that need
   to be run at intervals of minutes or hours (such as full backups and health checks).
 - [cowboy](https://hexdocs/pm/cowboy/readme.html)
-
-# Scripts
-
-To seed the simulation use 
-
-``` bash
-mix cosmos.seed
-```
-
-To clear the simulation use 
-
-``` elixir
-mix cosmos.destroy
-```
 
 # Testing
 
