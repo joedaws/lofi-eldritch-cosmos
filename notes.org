@@ -1,4 +1,32 @@
 #+title: Notes
+* Planning
+
+I need to have a concept of a user so that each user can upload their own
+flashcards and only fetch their own flash cards.
+
+I want the initial UI to be built in an application called
+lofi-eldritch-cosmos-cli which will be a cli written
+in Haskell to
+
+Somethings to read an understand are
+- [[https://stackoverflow.com/questions/39302350/building-blocks-of-interactive-terminal-applications][textual user interface]]
+- [[https://tldp.org/HOWTO/NCURSES-Programming-HOWTO/][ncurses]] bindings for Haskell
+- [[https://en.wikipedia.org/wiki/Leitner_system][leitner system]]
+
+The next chunk of functionality is to use the lofi api
+interface to
+- create being with incantation
+  (/being POST)
+- client fetches beings with incantations ready to be reinforced
+  (/being GET with correct parameters)
+- client inputs the "back" of the incantation and it is checked
+  if correct then (inspired by [[https://en.wikipedia.org/wiki/Spaced_repetition][spaced repetition]])
+  - being gets increased ichor
+  - that incantation gets upgraded to the next level (box in the leitner system)
+  if incorrect then
+  - no change to ichor
+  - that incantation gets downgraded to the next level (unless at lowest level)
+  (/being POST with correct input)
 
 * Product
 ** Spaced Repetition
@@ -62,6 +90,8 @@ It grows even faster when you use flashcard mode
 
 * Technologies
 ** Architecture
+*** Problems
+- How can I keep different user's data separate?
 ** Start up
 To start the application what is required.
 
@@ -69,5 +99,12 @@ Need to load the existing beings from the database.
 Need to start the relevant systems
 
 What scripts are run during start up?
-** Supabase
+** Backends
+Below we list some back ends to consider using to power the application.
+
+I want it to be free at first.
+*** AWS Backend
+Can use a combination of backend services from AWS.
+
+*** Supabase
 This might be awesome since it includes auth
