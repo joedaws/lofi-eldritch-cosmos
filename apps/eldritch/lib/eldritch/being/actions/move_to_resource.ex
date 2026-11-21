@@ -1,23 +1,37 @@
 defmodule Eldritch.Being.Actions.MoveToResource do
   @moduledoc """
-  Creates an action queue to move a being to a node with a desired resource
+  A being travels (one node per cycle) toward the nearest node it knows
+  of that holds the resource it desires.
   """
-  @enforce_keys [:priority, :preconditions]
-  defstruct [:priority, :preconditions]
+  @behaviour Eldritch.Being.Action
+  import Eldritch.Being.Action
 
-  def preconditions_satisfied?(being_observations, desired_resource) do
-    nodes = Map.get(being_observations, "visited_nodes")
-    node = Enum.find(nodes, nil, fn x -> x.resource == desired_resource end)
-    node != nil
+  @impl true
+  def priority(), do: 7
+
+  @impl true
+  def preconditions_satisfied?(ctx), do: destinations(ctx) != []
+
+  @impl true
+  def perform(ctx) do
+    case next_hop(ctx, ctx.being["at_node"], destinations(ctx)) do
+      nil ->
+        {"lost", "I know where #{pretty(desire(ctx))} lies, but cannot find the way."}
+
+      hop ->
+        move(ctx, hop)
+        {"travel", "I travel toward #{pretty(desire(ctx))}, through #{node_name(ctx, hop)}."}
+    end
   end
 
-  @doc """
-  This action can only be performed if the being knows of a
-  node with the desired resource.
-  """
-  def perform(being_id, being_observations, desired_resource) do
-    nodes = Map.get(being_observations, "visited_nodes")
-    node_id = Enum.find(nodes, nil, fn x -> x.resource == desired_resource end).node_id
-    Eldritch.Being.Actions.move_to_node(being_id, node_id)
+  defp destinations(ctx) do
+    desire = desire(ctx)
+    here = ctx.being["at_node"]
+
+    for {node_id, resource} <- known_nodes(ctx),
+        resource == desire,
+        node_id != here,
+        reserve(Map.get(ctx.graph, node_id, %{})) > 0,
+        do: node_id
   end
 end

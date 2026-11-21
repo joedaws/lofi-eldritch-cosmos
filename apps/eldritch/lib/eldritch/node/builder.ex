@@ -4,6 +4,9 @@ defmodule Eldritch.Node.Builder do
   """
   require Logger
 
+  @default_reserve 60
+  @max_reserve 120
+
   @doc """
   adds the name to a node entity
 
@@ -27,6 +30,8 @@ defmodule Eldritch.Node.Builder do
 
     occupants(node_server)
     neighbors(node_server)
+    reserve(node_server, Map.get(attributes, "reserve", @default_reserve))
+    position(node_server, Map.get(attributes, "position"))
 
     node_id
   end
@@ -53,6 +58,43 @@ defmodule Eldritch.Node.Builder do
     else
       Logger.error("Invalid resource_yield or resource_type in builder for node")
     end
+  end
+
+  @doc """
+  How much of the node's resource can still be harvested.
+  Harvesting depletes it, the regrowth system slowly replenishes it.
+  """
+  def reserve(entity_server, amount) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("reserve", Eldritch.System.Regrowth, %{
+        "amount" => amount,
+        "max" => @max_reserve
+      })
+    )
+  end
+
+  @doc """
+  `%{"x" => x, "y" => y}` in [-1, 1] used to draw the landscape (or nil)
+  """
+  def position(entity_server, position) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("position", :attribute, position)
+    )
+  end
+
+  @doc """
+  Adds components missing from nodes persisted by an earlier version
+  """
+  def ensure_standard(entity_server) do
+    entity = Cosmos.Entity.Server.get(entity_server)
+
+    if Cosmos.Entity.component(entity, "reserve") == nil,
+      do: reserve(entity_server, @default_reserve)
+
+    if Cosmos.Entity.component(entity, "position") == nil, do: position(entity_server, nil)
+    :ok
   end
 
   def occupants(entity_server) do

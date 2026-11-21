@@ -1,32 +1,40 @@
 defmodule Eldritch.System.Remind do
+  @moduledoc """
+  Spaced repetition: when a being's incantation comes due the being
+  begins to whisper it and waits for someone to answer
+  (see `Eldritch.Being.recall/2`).
+  """
   require Logger
+  alias Eldritch.Being.Incantation
 
   def update_components(system) do
-    Registry.dispatch(Cosmos.SystemRegistry, system, fn entries ->
-      for {pid, _} <- entries, do: remind(pid)
-    end)
+    for {pid, being_id} <- Eldritch.Entities.members(system), do: remind(pid, being_id)
   end
 
-  @doc """
-  Load the incantation for the being and return a message based on it's type.
-  """
-  defp remind(being_server) do
-    {incantation_type, message} =
-      case Cosmos.Entity.Server.component(being_server, "incantation").value do
-        %{"front" => "", "back" => ""} ->
-          {:empty_incantation, "No incantation"}
+  defp remind(being_server, being_id) do
+    result =
+      Cosmos.Entity.Server.get_and_update_component(being_server, "incantation", fn comp ->
+        incantation = Incantation.normalize(comp.value)
 
-        %{"front" => declaration, "back" => ""} ->
-          {:declarative_incantation, declaration}
+        if not incantation["awaiting"] and Incantation.type(incantation) != :empty and
+             Incantation.due?(incantation) do
+          {{:whisper, incantation}, %{comp | value: %{incantation | "awaiting" => true}}}
+        else
+          {:quiet, %{comp | value: incantation}}
+        end
+      end)
 
-        %{"front" => front_msg, "back" => back_msg} ->
-          {:flash_incantation, [front_msg, back_msg]}
-      end
+    case result do
+      {:whisper, incantation} ->
+        name = Cosmos.Entity.Server.value(being_server, "name")
+        Logger.info("#{name} whispers: #{incantation["front"]}")
 
-    case incantation_type do
-      :declarative_incantation -> Logger.info("Reminding about #{message}")
-      :flash_incantation -> Logger.info("Reminding about \nfront: #{Enum.at(message,0)} \nback: #{Enum.at(message, 1)}")
-      _ -> Logger.info("Nothing to remind")
+        Eldritch.Chronicle.record(:whisper, "#{name} whispers \"#{incantation["front"]}\"", %{
+          "beings" => [being_id]
+        })
+
+      _ ->
+        :ok
     end
   end
 end

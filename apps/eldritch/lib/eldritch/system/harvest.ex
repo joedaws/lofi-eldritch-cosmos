@@ -1,40 +1,48 @@
 defmodule Eldritch.System.Harvest do
+  @moduledoc """
+  Living beings gather the resource of the node they occupy. Each
+  harvest takes up to the node's `resource_yield` out of its `reserve`,
+  so crowded places are quickly stripped bare. A being can carry at
+  most #{40} units of resources in total.
+  """
   require Logger
+  alias Eldritch.Entities
+
+  @carry_capacity 40
+
+  def carry_capacity(), do: @carry_capacity
 
   def update_components(system) do
-    Registry.dispatch(Cosmos.SystemRegistry, system, fn entries ->
-      for {pid, _} <- entries, do: harvest(pid)
-    end)
+    for {pid, _being_id} <- Entities.members(system) do
+      harvest(pid)
+    end
   end
 
   defp harvest(being_server) do
-    # need to find the resource type
-    {resource_type, resource_yield} =
-      case Cosmos.Entity.Server.component(being_server, "at_node").value do
-        nil ->
-          {:nonode, 0}
+    with vals when vals != nil <- Entities.values(being_server),
+         true <- Entities.alive?(vals),
+         node_id when node_id != nil <- vals["at_node"],
+         node_server when is_pid(node_server) <- Cosmos.Entity.Cache.lookup(node_id) do
+      resource_type = Cosmos.Entity.Server.value(node_server, "resource_type")
+      carried = (get_in(vals, ["inventory", "resources"]) || %{}) |> Map.values() |> Enum.sum()
 
-        node_id ->
-          node_server = Cosmos.Entity.Cache.server_process(node_id)
-          resource_type = Cosmos.Entity.Server.component(node_server, "resource_type").value
-          resource_yield = Cosmos.Entity.Server.component(node_server, "resource_yield").value
-          {resource_type, resource_yield}
+      resource_yield =
+        node_server
+        |> Cosmos.Entity.Server.value("resource_yield", 0)
+        |> min(max(0, @carry_capacity - carried))
+
+      gathered =
+        case Cosmos.Entity.Server.get_and_update_component(node_server, "reserve", fn comp ->
+               taken = min(resource_yield, comp.value["amount"])
+               {taken, %{comp | value: Map.update!(comp.value, "amount", &(&1 - taken))}}
+             end) do
+          {:error, :no_component} -> resource_yield
+          taken -> taken
+        end
+
+      if resource_type != nil and gathered > 0 do
+        Eldritch.Being.Actions.give_resource(being_server, resource_type, gathered)
       end
-
-    if resource_type != :nonode do
-      GenServer.cast(
-        being_server,
-        {:update_component, "inventory",
-         fn comp ->
-           Map.update!(comp, :value, fn inventory_map ->
-             Map.update!(inventory_map, "resources", fn resources_map ->
-               Map.update(resources_map, resource_type, resource_yield, fn x ->
-                 x + resource_yield
-               end)
-             end)
-           end)
-         end}
-      )
     end
   end
 end

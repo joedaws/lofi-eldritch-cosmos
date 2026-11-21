@@ -5,6 +5,7 @@ defmodule Dev.TemporalDecay do
   Creates a being and a node
   turns on the temporal_decay system
   """
+  Eldritch.Simulation.initialize_systems()
   being_id = Eldritch.Being.Builder.build({:new, :being, :standard})
 
   Cosmos.System.on(Eldritch.System.TemporalDecay)

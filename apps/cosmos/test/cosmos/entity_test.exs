@@ -40,3 +40,28 @@ defmodule Cosmos.EntityTest do
     assert Cosmos.Entity.component(new_entity, "name").value == "gor'lop"
   end
 end
+
+defmodule Cosmos.EntityFixesTest do
+  use ExUnit.Case
+
+  test "component/2 returns nil for missing components" do
+    assert Cosmos.Entity.component(Cosmos.Entity.new(), "missing") == nil
+  end
+
+  test "servers for unknown ids keep that id" do
+    id = "fresh-#{System.unique_integer([:positive])}"
+    pid = Cosmos.Entity.Cache.server_process(id)
+    assert Cosmos.Entity.Server.get(pid).id == id
+    Cosmos.Entity.Cache.stop(id)
+  end
+
+  test "database writes to one key are applied in order and deletes do not crash" do
+    key = "ordered-#{System.unique_integer([:positive])}"
+    for i <- 1..50, do: Cosmos.Database.store(key, i)
+    assert Cosmos.Database.get(key) == 50
+    Cosmos.Database.delete(key)
+    Cosmos.Database.delete(key)
+    Cosmos.Database.sync()
+    assert Cosmos.Database.get(key) == nil
+  end
+end

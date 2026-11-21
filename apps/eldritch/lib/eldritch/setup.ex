@@ -1,27 +1,31 @@
 defmodule Eldritch.Setup do
+  @moduledoc """
+  Start up script for the Eldritch application:
+
+    1. registers every system with Cosmos
+    2. loads the persisted cosmos (`config :eldritch, load_on_start: true`)
+    3. starts the simulation (`config :eldritch, autostart: true` or
+       the `ELDRITCH_AUTOSTART=true` environment variable)
+  """
   require Logger
 
-  def start_link do
-    Task.start_link(&init/0)
-  end
-
-  defp init() do
-    initialize_systems()
-  end
-
-  defp initialize_systems() do
+  def run() do
     Logger.info("initializing systems for Eldritch Application")
-    # TODO make the cycle durations dependent on the Mix.env
-    Cosmos.System.add(Eldritch.System.TemporalDecay, 20 * 1000)
-    Cosmos.System.add(Eldritch.System.Harvest, 20 * 1000)
-    Cosmos.System.add(:is_being, :none)
-    Cosmos.System.add(:is_node, :none)
-    Cosmos.System.add(:is_carte, :none)
-    Cosmos.System.add(:inventory, :none)
-    Cosmos.System.add(:attribute, :none)
-    # make slightly shorter than Harvest
-    Cosmos.System.add(Eldritch.System.Observation, 19 * 1000)
-    # Need to make remind system configurable
-    Cosmos.System.add(Eldritch.System.Remind, 3 * 1000)
+    Eldritch.Simulation.initialize_systems()
+
+    if Application.get_env(:eldritch, :load_on_start, true) do
+      Eldritch.Genesis.load_all()
+    end
+
+    if autostart?() do
+      Eldritch.Simulation.start()
+    end
+
+    :ok
+  end
+
+  defp autostart?() do
+    System.get_env("ELDRITCH_AUTOSTART") in ["1", "true"] or
+      Application.get_env(:eldritch, :autostart, false)
   end
 end

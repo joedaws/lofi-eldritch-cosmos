@@ -19,6 +19,20 @@ config :lofi, http_port: 5454
 
 config :cosmos, monitor_metrics: "true"
 
+# Name of the folder (inside $XDG_DATA_HOME) where entities are persisted
+config :cosmos, data_dir_name: "lofi-eldritch-cosmos"
+
+# Simulation pacing: one "tick" is the base cycle duration (ms) every
+# Eldritch system is scaled from. Lower is faster.
+config :eldritch,
+  tick_ms: 1000,
+  # start every simulation system as soon as the application boots
+  autostart: false,
+  # load all persisted entities into memory when the application boots
+  load_on_start: true
+
+config :logger, :console, format: "$time [$level] $message\n"
+
 # Sample configuration:
 #
 #     config :logger, :console,

@@ -29,7 +29,8 @@ defmodule Lofi.MixProject do
       {:cowboy, "~> 2.9"},
       {:plug, "~> 1.14"},
       {:plug_cowboy, "~> 2.0"},
-      {:cosmos, in_umbrella: true}
+      {:cosmos, in_umbrella: true},
+      {:eldritch, in_umbrella: true}
     ]
   end
 end

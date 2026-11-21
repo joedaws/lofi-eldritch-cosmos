@@ -18,7 +18,14 @@ defmodule Cosmos.Entity do
   @default_auto_component_id 1
 
   def new() do
-    %__MODULE__{components: %{}, id: generate_id(), auto_component_id: @default_auto_component_id}
+    new_with_id(generate_id())
+  end
+
+  @doc """
+  Creates an empty entity with a known id
+  """
+  def new_with_id(entity_id) do
+    %__MODULE__{components: %{}, id: entity_id, auto_component_id: @default_auto_component_id}
   end
 
   @doc """
@@ -68,6 +75,7 @@ defmodule Cosmos.Entity do
   def system_atoms(entity) do
     entity.components
     |> Enum.map(fn {_, comp} -> comp.system end)
+    |> Enum.uniq()
   end
 
   @doc """
@@ -160,9 +168,8 @@ defmodule Cosmos.Entity do
     end
   end
 
-  defp extract_value_from_tuple({_, v}) do
-    v
-  end
+  defp extract_value_from_tuple({_, v}), do: v
+  defp extract_value_from_tuple(nil), do: nil
 end
 
 defimpl Collectable, for: Cosmos.Entity do

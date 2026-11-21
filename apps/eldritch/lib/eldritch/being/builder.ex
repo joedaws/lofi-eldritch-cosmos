@@ -3,12 +3,28 @@ defmodule Eldritch.Being.Builder do
   Used to create new instances of being entities
 
   Not intended for use after the initialization of an entity
+  (except `ensure_standard/1`, which upgrades beings persisted by
+  older versions of the cosmos).
   """
   @starting_ichor 100
   @starting_orichalcum 100
+  # measured in volition cycles
+  @lifespan 500..900
+
+  def default_lifespan(), do: Enum.max(@lifespan)
+  def random_lifespan(), do: Enum.random(@lifespan)
 
   @doc """
-  adds name, ichor, and orichalcum components from scratch
+  Builds a standard being. Every attribute may be overridden:
+
+    * `"name"`        - defaults to the next name from the being name generator
+    * `"ichor"`       - life force (default #{@starting_ichor})
+    * `"orichalcum"`  - currency (default #{@starting_orichalcum})
+    * `"at_node"`     - node id the being starts at (default nil)
+    * `"desire"`      - resource type the being longs for (default random)
+    * `"incantation"` - `%{"front" => ..., "back" => ...}`
+    * `"lineage"`     - `%{"generation" => n, "parents" => [ids]}`
+    * `"bonds"`       - `%{being_id => affinity}`
 
   returns the entity id of the newly created being
   """
@@ -17,14 +33,85 @@ defmodule Eldritch.Being.Builder do
     entity_id = new_entity.id
     Cosmos.Database.store(entity_id, new_entity)
     entity_server = Cosmos.Entity.Cache.server_process(entity_id)
-    Eldritch.CommonComponent.name(entity_server, Map.get(attributes, "name", "jorsa"))
+
+    Eldritch.CommonComponent.name(
+      entity_server,
+      Map.get_lazy(attributes, "name", &Eldritch.Being.NameGenerator.next/0)
+    )
+
+    is_being(entity_server)
+    status(entity_server, "alive")
     ichor(entity_server, Map.get(attributes, "ichor", @starting_ichor))
     inventory(entity_server, Map.get(attributes, "orichalcum", @starting_orichalcum))
-    at_node(entity_server, Map.get(attributes, "at_node", nil))
+    at_node(entity_server, nil)
     # a new being does not start with observations, so no override is provided
     observations(entity_server)
-    incantation(entity_server)
+    incantation(entity_server, Map.get(attributes, "incantation"))
+
+    volition(
+      entity_server,
+      Map.get_lazy(attributes, "desire", &Eldritch.Node.Resource.get_random_resource_type/0)
+    )
+
+    bonds(entity_server, Map.get(attributes, "bonds", %{}))
+    lineage(
+      entity_server,
+      Map.merge(
+        %{"generation" => 0, "parents" => [], "age" => 0, "lifespan" => random_lifespan()},
+        Map.get(attributes, "lineage", %{})
+      )
+    )
+
+    case Map.get(attributes, "at_node") do
+      nil -> :ok
+      node_id -> Eldritch.Being.Actions.move_to_node(entity_id, node_id)
+    end
+
     entity_id
+  end
+
+  @doc """
+  Adds any standard component missing from a being persisted by an
+  earlier version and converts outdated component values.
+  """
+  def ensure_standard(entity_server) do
+    entity = Cosmos.Entity.Server.get(entity_server)
+    has? = fn name -> Cosmos.Entity.component(entity, name) != nil end
+
+    unless has?.("is_being"), do: is_being(entity_server)
+    unless has?.("status"), do: status(entity_server, "alive")
+    unless has?.("harvest"), do: at_node(entity_server, nil)
+    unless has?.("observations"), do: observations(entity_server)
+    unless has?.("incantation"), do: incantation(entity_server, nil)
+
+    unless has?.("volition"),
+      do: volition(entity_server, Eldritch.Node.Resource.get_random_resource_type())
+
+    unless has?.("bonds"), do: bonds(entity_server, %{})
+
+    unless has?.("lineage"),
+      do:
+        lineage(entity_server, %{
+          "generation" => 0,
+          "parents" => [],
+          "age" => 0,
+          "lifespan" => random_lifespan()
+        })
+
+    # observations used to be a MapSet of {node_id, resource_type} tuples
+    case Cosmos.Entity.component(entity, "observations") do
+      %{value: %{"nodes_and_resources" => old}} ->
+        known = Map.new(old, fn {node_id, resource} -> {node_id, resource} end)
+
+        Cosmos.Entity.Server.update_component(entity_server, "observations", fn comp ->
+          %{comp | value: %{"nodes" => known, "visited" => Map.new(known, fn {k, _} -> {k, true} end)}}
+        end)
+
+      _ ->
+        :ok
+    end
+
+    :ok
   end
 
   def ichor(entity_server, ichor_amount) do
@@ -41,6 +128,20 @@ defmodule Eldritch.Being.Builder do
     )
   end
 
+  @doc """
+  "alive" or "faded"
+  """
+  def status(entity_server, status) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("status", :attribute, status)
+    )
+  end
+
+  @doc """
+  Sets the location component. Use `Eldritch.Being.Actions.move_to_node/2`
+  to move an existing being so that node occupants stay consistent.
+  """
   def at_node(entity_server, node_id) do
     Cosmos.Entity.Server.add_component(
       entity_server,
@@ -63,12 +164,52 @@ defmodule Eldritch.Being.Builder do
     )
   end
 
+  @doc """
+  What the being knows about the landscape:
+
+    * `"nodes"`   - `%{node_id => resource_type}` of every node it has seen
+    * `"visited"` - `%{node_id => true}` of every node it has stood in
+  """
   def observations(entity_server) do
     Cosmos.Entity.Server.add_component(
       entity_server,
       Cosmos.Entity.Component.new("observations", Eldritch.System.Observation, %{
-        "nodes_and_resources" => MapSet.new()
+        "nodes" => %{},
+        "visited" => %{}
       })
+    )
+  end
+
+  @doc """
+  The being's drives. `"desire"` is the resource it longs for; once
+  attained, desire slides on to another object. `"intent"` and
+  `"thought"` describe what the being is currently doing.
+  """
+  def volition(entity_server, desire) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("volition", Eldritch.System.Volition, %{
+        "desire" => desire,
+        "intent" => "awaken",
+        "thought" => "..."
+      })
+    )
+  end
+
+  @doc """
+  `%{other_being_id => affinity}` (negative for rivals)
+  """
+  def bonds(entity_server, bonds) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("bonds", Eldritch.System.Communion, bonds)
+    )
+  end
+
+  def lineage(entity_server, lineage) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("lineage", :attribute, lineage)
     )
   end
 
@@ -79,15 +220,19 @@ defmodule Eldritch.Being.Builder do
 
   A single sided flash card is a "declarative incantation"
   A two-sided flash card is a "flash incantation"
+
+  See `Eldritch.Being.Incantation` for the spaced repetition fields.
   """
-  def incantation(entity_server) do
-    # initialize front
+  def incantation(entity_server, incantation \\ nil) do
+    incantation = incantation || Eldritch.Being.Incantation.default()
+
     Cosmos.Entity.Server.add_component(
       entity_server,
-      Cosmos.Entity.Component.new("incantation", Eldritch.System.Remind, %{
-        "front" => "Breath life into the being with this incantation",
-        "back" => "Secrets can strengthen life force"
-      })
+      Cosmos.Entity.Component.new(
+        "incantation",
+        Eldritch.System.Remind,
+        Eldritch.Being.Incantation.new(incantation["front"], incantation["back"])
+      )
     )
   end
 end

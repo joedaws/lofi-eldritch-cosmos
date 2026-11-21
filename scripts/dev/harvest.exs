@@ -6,6 +6,7 @@ defmodule Dev.Harvest do
   Moves being to node
   turns on the harvest system
   """
+  Eldritch.Simulation.initialize_systems()
   being_id = Eldritch.Being.Builder.build({:new, :being, :standard})
   node_id = Eldritch.Node.Builder.build({:new, :node})
 

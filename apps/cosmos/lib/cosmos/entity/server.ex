@@ -4,6 +4,10 @@ defmodule Cosmos.Entity.Server do
   will be restarted when there is an abnormal exit reason.
   This way we can retire servers when we don't need to update
   an entity or that entity has faded from existence.
+
+  Entity servers never call other entity servers. Logic that spans
+  several entities lives in systems (or other callers), which keeps
+  the process graph free of call cycles and therefore of deadlocks.
   """
   use GenServer, restart: :transient
   require Logger
@@ -20,8 +24,24 @@ defmodule Cosmos.Entity.Server do
     GenServer.call(entity_server, {:component, component_name})
   end
 
-  def add_component(entity_server, component) do
+  @doc """
+  Returns the value of the named component or `default` when the
+  entity has no such component.
+  """
+  def value(entity_server, component_name, default \\ nil) do
+    case component(entity_server, component_name) do
+      nil -> default
+      comp -> comp.value
+    end
+  end
+
+  def add_component(entity_server, %Cosmos.Entity.Component{} = component) do
     GenServer.cast(entity_server, {:add_component, component})
+  end
+
+  def add_component(_entity_server, invalid) do
+    Logger.error("refusing to add invalid component #{inspect(invalid)}")
+    {:error, invalid}
   end
 
   def delete_component(entity_server, component_id) do
@@ -32,20 +52,32 @@ defmodule Cosmos.Entity.Server do
     GenServer.cast(entity_server, {:update_component, component, updater_fn})
   end
 
+  @doc """
+  Atomically updates the component named `component_name`.
+
+  `fun` receives the component and must return `{reply, new_component}`.
+  `reply` is returned to the caller. When the component does not exist
+  `{:error, :no_component}` is returned and nothing changes.
+
+  This is used for transfers (e.g. one being gifting resources to
+  another) where the caller needs to know exactly what happened.
+  """
+  def get_and_update_component(entity_server, component_name, fun) do
+    GenServer.call(entity_server, {:get_and_update_component, component_name, fun})
+  end
+
   @impl true
   def init(entity_id) do
-    Logger.info("starting entity server for entity #{inspect(entity_id)}")
+    Logger.debug("starting entity server for entity #{inspect(entity_id)}")
 
     entity =
       case Cosmos.Database.get(entity_id) do
         nil ->
-          Logger.info("entity #{entity_id} not found in database")
-          Logger.info("Creating new entity")
-          Cosmos.Entity.new()
+          Logger.debug("entity #{entity_id} not found in database, creating new entity")
+          Cosmos.Entity.new_with_id(entity_id)
 
         entity ->
-          Logger.info("entity #{entity_id} found in database")
-          Logger.info("registering entity to systems")
+          Logger.debug("entity #{entity_id} found in database, registering to systems")
           register_all(entity_id, Cosmos.Entity.system_atoms(entity))
           entity
       end
@@ -61,6 +93,20 @@ defmodule Cosmos.Entity.Server do
   @impl true
   def handle_call({:component, component_name}, _from, {entity_id, entity}) do
     {:reply, Cosmos.Entity.component(entity, component_name), {entity_id, entity}}
+  end
+
+  @impl true
+  def handle_call({:get_and_update_component, component_name, fun}, _from, {entity_id, entity}) do
+    case Cosmos.Entity.component(entity, component_name) do
+      nil ->
+        {:reply, {:error, :no_component}, {entity_id, entity}}
+
+      comp ->
+        {reply, new_comp} = fun.(comp)
+        new_entity = Cosmos.Entity.update_component(entity, comp.id, fn _ -> new_comp end)
+        Cosmos.Database.store(entity_id, new_entity)
+        {:reply, reply, {entity_id, new_entity}}
+    end
   end
 
   @impl true
@@ -80,7 +126,11 @@ defmodule Cosmos.Entity.Server do
         {:noreply, {entity_id, entity}}
 
       {new_entity, removed_component} ->
-        unregister_to_system(removed_component.system)
+        # only leave the system when no other component still belongs to it
+        if Cosmos.Entity.components(new_entity, removed_component.system) == [] do
+          unregister_to_system(removed_component.system)
+        end
+
         Cosmos.Database.store(entity_id, new_entity)
         {:noreply, {entity_id, new_entity}}
     end
@@ -101,27 +151,31 @@ defmodule Cosmos.Entity.Server do
   @impl true
   def handle_cast({:update_component, component_name, updater_fn}, {entity_id, entity})
       when is_bitstring(component_name) do
-    component_id = Cosmos.Entity.component(entity, component_name).id
+    case Cosmos.Entity.component(entity, component_name) do
+      nil ->
+        Logger.warning("entity #{entity_id} has no component #{component_name} to update")
+        {:noreply, {entity_id, entity}}
 
-    new_entity = Cosmos.Entity.update_component(entity, component_id, updater_fn)
-
-    Cosmos.Database.store(entity_id, new_entity)
-    {:noreply, {entity_id, new_entity}}
+      comp ->
+        new_entity = Cosmos.Entity.update_component(entity, comp.id, updater_fn)
+        Cosmos.Database.store(entity_id, new_entity)
+        {:noreply, {entity_id, new_entity}}
+    end
   end
 
   defp register_all(entity_id, system_atoms) do
-    Enum.map(system_atoms, fn sys_atom -> register_to_system(entity_id, sys_atom) end)
+    Enum.each(system_atoms, fn sys_atom -> register_to_system(entity_id, sys_atom) end)
   end
 
   defp register_to_system(entity_id, system_atom) do
     # only register to the system if not already present
     case Registry.match(Cosmos.SystemRegistry, system_atom, [entity_id]) do
       [] ->
-        Logger.info("registering #{entity_id} to system #{system_atom}")
+        Logger.debug("registering #{entity_id} to system #{inspect(system_atom)}")
         Cosmos.SystemRegistry.register(entity_id, system_atom)
 
-      [_] ->
-        Logger.info("#{entity_id} already registered to system #{system_atom}")
+      _ ->
+        :ok
     end
   end
 

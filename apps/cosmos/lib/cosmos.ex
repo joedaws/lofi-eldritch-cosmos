@@ -1,6 +1,6 @@
 defmodule Cosmos do
   @moduledoc """
-  Documentation for `Cosmos`.
+  Entry point for the `Cosmos` entity component system.
   """
 
   def get_persist_dir() do
@@ -8,10 +8,13 @@ defmodule Cosmos do
   end
 
   @doc """
-  The Database query should return some kind of map
-  object or list object.
+  Query the database.
+
+  Supported filters:
+    * `"entities"` - `%{"entity_ids" => [...]}` every persisted entity id
+    * `"beings"`   - `%{"being_ids" => [...]}` ids of persisted entities that are beings
   """
   def query(filter) do
-    result = Cosmos.Database.query(filter)
+    Cosmos.Database.query(filter)
   end
 end

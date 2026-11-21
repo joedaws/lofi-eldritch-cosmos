@@ -1,16 +1,32 @@
 defmodule Eldritch.Being.Actions.Explore do
   @moduledoc """
-  Visit previously unvisited locations
+  Visit previously unvisited locations, or wander when every
+  neighbouring place is already known.
   """
-  @enforce_keys [:priority, :preconditions]
-  defstruct [:priority, :preconditions]
+  @behaviour Eldritch.Being.Action
+  import Eldritch.Being.Action
 
-  def new(priority \\ 6, preconditions \\ {:none}) do
-    %__MODULE__{priority: priority, preconditions: preconditions}
-  end
+  @impl true
+  def priority(), do: 4
 
-  def preconditions_satisfied?(_being_observation) do
-    # This means we allows allow a being to explore
-    true
+  @impl true
+  def preconditions_satisfied?(ctx), do: neighbors(ctx) != []
+
+  @impl true
+  def perform(ctx) do
+    visited = visited(ctx)
+    options = neighbors(ctx)
+
+    case Enum.reject(options, &Map.has_key?(visited, &1)) do
+      [] ->
+        node_id = Enum.random(options)
+        move(ctx, node_id)
+        {"wander", "I wander to #{node_name(ctx, node_id)}."}
+
+      unvisited ->
+        node_id = Enum.random(unvisited)
+        move(ctx, node_id)
+        {"explore", "I venture into #{node_name(ctx, node_id)}, unknown to me."}
+    end
   end
 end

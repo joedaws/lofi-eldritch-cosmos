@@ -1,4 +1,9 @@
 defmodule Eldritch.System.TemporalDecay do
+  @moduledoc """
+  Time wears on every being: its ichor drains a little each cycle
+  (never below zero). The volition system fades beings whose ichor
+  has run dry.
+  """
   require Logger
   @decay_amount %{"ichor" => 1}
 
@@ -10,6 +15,6 @@ defmodule Eldritch.System.TemporalDecay do
   end
 
   defp decrement(comp) do
-    %{comp | value: comp.value - Map.get(@decay_amount, comp.name)}
+    %{comp | value: max(0, comp.value - Map.get(@decay_amount, comp.name, 0))}
   end
 end

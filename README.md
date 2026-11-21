@@ -13,11 +13,18 @@ Simulation of a cosmos of eldritch beings trying to learn cooperation and social
 
 # Running the simulation
 
-To seed the simulation use 
-
-``` elixir 
-mix cosmos.seed
+```bash
+mix deps.get
+mix cosmos.seed            # dream a landscape and awaken beings (asks before wiping old data)
+mix run --no-halt          # start the cosmos and the lofi server
 ```
+
+Then open **http://localhost:5454** and press **▶ Stir** (or start with
+`ELDRITCH_AUTOSTART=true mix run --no-halt`). If the cosmos is empty the
+page offers to seed one for you.
+
+`mix cosmos.seed` options: `--yes` (wipe without asking), `--keep` (seed on top of
+existing data), `--beings 12`, `--rings 6,10,14` (places on each ring of the landscape).
 
 To clear the simulation use the destroy script (which will ask before destroying)
 
@@ -25,14 +32,65 @@ To clear the simulation use the destroy script (which will ask before destroying
 mix cosmos.destroy
 ```
 
+## The visualization
+
+- Places (nodes) glow in the colour of their resource; the filled core and the arc
+  around them show how much of their reserve is left.
+- Beings orbit the place they dwell in. Their size is their ichor; their eye looks where
+  they are going. Faded beings linger as grey husks where they fell.
+- A pulsing golden halo means a being is **whispering its incantation**: select it and
+  answer. A true answer feeds it ichor and can even call a faded being back from the void.
+- Click a being to follow it and see its thoughts, desire, inventory, bonds, lineage and
+  incantation. **Beckon…** then click a place to draw it there.
+- Click a place to see who is there and to **summon** a new being with your own incantation.
+- **Bonds** draws the strong bonds between all beings (green: affinity, red: rivalry).
+- The speed slider sets the tick duration (100ms – 3s). **New cosmos** unmakes and reseeds.
+
+## How the cosmos works
+
+Every being is an entity whose components subscribe it to systems
+(see `Eldritch.Simulation` for pacing):
+
+| System | What it does |
+| --- | --- |
+| `Volition` | each tick a being ages and performs its highest priority action whose preconditions hold: **Consume** (eat when hungry; the desired resource nourishes most), **ShiftDesire** (once enough is hoarded it is devoured, and desire slides on to something else), **Forage** (starving), **Linger** (gather the desired resource), **MoveToResource** (walk the shortest path toward a known source of desire), **SeekKin** (join a bonded being), **Explore** / wander. Beings past their lifespan wither; beings with no ichor fade. |
+| `Observation` | beings remember the place they stand in and glimpse the resources of neighbouring places |
+| `Harvest` | beings gather their place's resource, depleting its reserve (they can carry at most 40 units) |
+| `Regrowth` | places slowly replenish their reserves |
+| `TemporalDecay` | ichor drains over time |
+| `Communion` | beings sharing a place meet, share what they know of the landscape, gift what the other desires, quarrel over dwindling resources they both want, share ichor with fading friends, and — when deeply bonded and vigorous — **summon** a new being (up to `max_population`) |
+| `Remind` | spaced repetition (Leitner boxes, 20s → 1d): when an incantation comes due the being whispers it |
+
+Noteworthy happenings are written to the **chronicle** (`Eldritch.Chronicle`) shown in the side panel.
+
+## HTTP API
+
+| Method & path | Body | |
+| --- | --- | --- |
+| `GET /` | | the visualization |
+| `GET /world?since=SEQ` | | nodes, beings, simulation status and chronicle events after `SEQ` |
+| `GET /beings`, `GET /nodes` | | ids |
+| `GET /being?id=ID` | | full entity (404 for unknown ids) |
+| `POST /being` | optional `name`, `at_node`, `incantation: {front, back}` | create a being |
+| `POST /being/recall` | `id`, `answer` | answer a whispered incantation (409 if it isn't whispering) |
+| `POST /being/beckon` | `id`, `node_id` | move a being |
+| `POST /being/incantation` | `id`, `front`, `back` | rebind a being's incantation |
+| `GET /simulation`, `POST /simulation/start`, `POST /simulation/stop` | | |
+| `POST /simulation/speed` | `tick_ms` | |
+| `POST /cosmos/seed` | `beings`, `rings`, `reset` | seed a landscape |
+| `POST /cosmos/reset` | | unmake everything |
+
 # Release Road map
 
 ## Release Gamigin 
 
-- [ ]Computational Lacanian dynamics
+- [ ] Computational Lacanian dynamics (desire sliding from object to object is a start)
 - [x] Start up script making a being and node
 - [x] Script to destory the cosmos so that one can start over
-- [ ] Start up script making the landscape
+- [x] Start up script making the landscape
+- [x] Beings that act, cooperate, compete, reproduce and fade
+- [x] Spaced repetition of incantations
+- [x] Visualization
 
 # Starting the Cosmos ECS application
 
@@ -46,7 +104,7 @@ systems, and begin a simulation.
 
 ## Basic interaction with the lofi-eldritch-cosmos
 
-  * [ ] To create a new being (a standard one with only default values for it's components)
+To create a new being (a standard one with only default values for it's components)
 
 ``` bash
 curl -X POST http://localhost:5454/being
@@ -143,6 +201,13 @@ where the argument is the system atom (e.g. `:temporal_decay`).
 - [cowboy](https://hexdocs/pm/cowboy/readme.html)
 
 # Testing
+
+```bash
+mix test
+```
+
+Tests persist entities under `$XDG_DATA_HOME/lofi-eldritch-cosmos-test`, never in the
+real cosmos.
 
 ## Testing database workers
 

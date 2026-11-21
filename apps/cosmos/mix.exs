@@ -5,6 +5,10 @@ defmodule Cosmos.MixProject do
     [
       app: :cosmos,
       version: "0.1.0",
+      build_path: "../../_build",
+      config_path: "../../config/config.exs",
+      deps_path: "../../deps",
+      lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps()
@@ -23,7 +27,6 @@ defmodule Cosmos.MixProject do
   defp deps do
     [
       {:ksuid, "~> 0.1"},
-      {:poolboy, "~> 1.5"},
       {:quantum, "~> 3.0"},
       {:poison, "~> 5.0"}
     ]

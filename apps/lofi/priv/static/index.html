@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lofi Eldritch Cosmos</title>
+<style>
+  :root {
+    --bg: #07060d;
+    --panel: #110f1d;
+    --panel-2: #191629;
+    --border: #2a2540;
+    --text: #e6e1f5;
+    --muted: #9a92b8;
+    --faint: #5f5880;
+    --accent: #b98cff;
+    --accent-2: #7ef0c8;
+    --danger: #ff6b7a;
+    --warn: #ffcf6b;
+    --good: #7ef0a0;
+    --radius: 10px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--ui); font-size: 14px; }
+  body { display: grid; grid-template-columns: 1fr 380px; grid-template-rows: 100%; overflow: hidden; }
+  #stage { position: relative; min-width: 0; min-height: 0; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  canvas.dragging { cursor: grabbing; }
+  canvas.beckoning { cursor: crosshair; }
+  aside { background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+  h1 { font-family: var(--sans); font-weight: 600; font-size: 19px; letter-spacing: .5px; margin: 0 0 8px; }
+  h1 span { color: var(--accent); }
+  h2 { font-family: var(--sans); font-size: 17px; margin: 0; font-weight: 600; }
+  h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+  .controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #140b24; border-color: var(--accent); font-weight: 600; }
+  button.primary:hover { filter: brightness(1.1); }
+  button.danger:hover { border-color: var(--danger); color: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  input[type=text], input[type=number] { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; width: 100%; }
+  input:focus { outline: none; border-color: var(--accent); }
+  input[type=range] { accent-color: var(--accent); flex: 1; min-width: 80px; }
+  .speed { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+  .stat { background: var(--panel-2); border-radius: 8px; padding: 6px 8px; }
+  .stat b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .stat small { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px; }
+  #scroll { overflow-y: auto; flex: 1; padding: 0 16px 16px; }
+  .empty { color: var(--faint); font-style: italic; padding: 6px 0; }
+  .card { background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; margin-top: 12px; }
+  .row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 2px 0; }
+  .row span:first-child { color: var(--muted); }
+  .bar { height: 7px; background: var(--bg); border-radius: 4px; overflow: hidden; margin: 4px 0 8px; }
+  .bar i { display: block; height: 100%; border-radius: 4px; transition: width .4s; }
+  .thought { font-family: var(--sans); font-style: italic; color: #d7cff2; margin: 8px 0; line-height: 1.4; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip { font-size: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; display: inline-flex; gap: 5px; align-items: center; }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .chip.desire { border-color: var(--accent); }
+  .link { color: var(--accent-2); cursor: pointer; text-decoration: none; }
+  .link:hover { text-decoration: underline; }
+  .incantation { border: 1px dashed var(--faint); border-radius: 8px; padding: 8px 10px; margin-top: 6px; font-family: var(--sans); font-size: 15px; }
+  .incantation.awaiting { border-color: var(--warn); box-shadow: 0 0 12px #ffcf6b33; }
+  .recall { display: flex; gap: 6px; margin-top: 8px; }
+  .recall input { flex: 1; }
+  .feedback { font-size: 13px; margin-top: 6px; }
+  .feedback.good { color: var(--good); } .feedback.bad { color: var(--danger); }
+  .events { list-style: none; padding: 0; margin: 0; }
+  .events li { padding: 6px 0; border-bottom: 1px solid #1d1a2e; font-size: 13px; line-height: 1.35; color: #cfc8e6; }
+  .events li .k { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; margin-right: 6px; color: var(--faint); }
+  .events li.summon .k, .events li.revive .k { color: var(--good); }
+  .events li.fade .k, .events li.rivalry .k { color: var(--danger); }
+  .events li.gift .k, .events li.succor .k { color: var(--accent-2); }
+  .events li.whisper .k { color: var(--warn); }
+  .events li.desire .k, .events li.elder .k { color: var(--accent); }
+  .whispers li { display: flex; justify-content: space-between; gap: 8px; }
+  .legend { position: absolute; left: 12px; bottom: 12px; background: #110f1dd9; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-size: 12px; max-width: calc(100% - 24px); }
+  .legend .chips { gap: 4px 10px; }
+  .legend .chip { background: none; border: 0; padding: 0; color: var(--muted); }
+  .hint { position: absolute; top: 12px; left: 12px; color: var(--faint); font-size: 12px; pointer-events: none; }
+  .tooltip { position: absolute; pointer-events: none; background: #110f1df0; border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; font-size: 12px; white-space: nowrap; transform: translate(12px, 12px); display: none; }
+  .banner { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #140b24; padding: 6px 12px; border-radius: 999px; font-weight: 600; font-size: 13px; display: none; }
+  .overlay { position: absolute; inset: 0; display: none; place-items: center; background: radial-gradient(circle at center, #1a1430cc, #07060dee); }
+  .overlay .card { max-width: 380px; width: calc(100% - 32px); text-align: center; }
+  .overlay p { color: var(--muted); line-height: 1.5; }
+  .form-grid { display: grid; gap: 6px; margin-top: 8px; }
+  .form-grid label { font-size: 12px; color: var(--muted); text-align: left; }
+  .error { color: var(--danger); font-size: 12px; margin-top: 6px; }
+  .tabs { display: flex; gap: 4px; margin-top: 14px; }
+  .tabs button { flex: 1; font-size: 12px; padding: 5px; }
+  .tabs button.on { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 820px) {
+    body { grid-template-columns: 100%; grid-template-rows: 55vh 45vh; }
+    aside { border-left: 0; border-top: 1px solid var(--border); }
+    .legend { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cosmos"></canvas>
+  <div class="hint">drag to pan · scroll to zoom · click a being (the eye follows it) or a place</div>
+  <div class="banner" id="banner"></div>
+  <div class="tooltip" id="tooltip"></div>
+  <div class="legend" id="legend"></div>
+  <div class="overlay" id="genesis">
+    <div class="card">
+      <h2>The void is empty</h2>
+      <p>Dream a landscape of haunted places into being and awaken beings to roam it.</p>
+      <div class="form-grid">
+        <label for="seed-beings">Beings to awaken</label>
+        <input type="number" id="seed-beings" value="14" min="1" max="60">
+        <label for="seed-rings">Places on each ring (inner → outer)</label>
+        <input type="text" id="seed-rings" value="6, 10, 14">
+      </div>
+      <div class="controls" style="justify-content:center;margin-top:12px">
+        <button class="primary" id="seed-go">Begin genesis</button>
+        <button id="seed-cancel">Cancel</button>
+      </div>
+      <div class="error" id="seed-error"></div>
+    </div>
+  </div>
+</div>
+<aside>
+  <header>
+    <h1>Lofi <span>Eldritch</span> Cosmos</h1>
+    <div class="controls">
+      <button class="primary" id="toggle">▶ Stir</button>
+      <button id="new-cosmos" title="Unmake this cosmos and seed a new one">New cosmos</button>
+      <button id="bonds-toggle" title="Show strong bonds between all beings">Bonds</button>
+    </div>
+    <div class="speed">
+      <span>slow</span>
+      <input type="range" id="speed" min="100" max="3000" step="50" value="1000" aria-label="Tick duration">
+      <span>fast</span>
+      <span id="speed-label" style="min-width:64px;text-align:right;font-family:var(--mono)"></span>
+    </div>
+    <div class="stats">
+      <div class="stat"><small>tick</small><b id="s-tick">0</b></div>
+      <div class="stat"><small>living</small><b id="s-pop">0</b></div>
+      <div class="stat"><small>faded</small><b id="s-faded">0</b></div>
+      <div class="stat"><small>places</small><b id="s-nodes">0</b></div>
+    </div>
+  </header>
+  <div id="scroll">
+    <div id="selection"></div>
+    <div class="tabs">
+      <button id="tab-chronicle" class="on">Chronicle</button>
+      <button id="tab-whispers">Whispers <span id="whisper-count"></span></button>
+      <button id="tab-beings">Beings</button>
+    </div>
+    <div id="tab-body"></div>
+  </div>
+</aside>
+<script>
+(() => {
+  "use strict";
+
+  // ---------- state ----------
+  const RESOURCE_COLORS = {
+    bone: "#e8dcc0", blood: "#d9434f", peat_moss: "#7fa83a", tomb_mold: "#86c79a",
+    sea_foam: "#7fd6d0", obsidian: "#8b78c9", papyrus: "#d9b56a", lotus_root: "#e88fb8",
+    soap_stone: "#9aa7b0", birch_bark: "#cbbf94", uncanny_coal: "#ff7a3a"
+  };
+  const state = {
+    world: null, nodes: new Map(), beings: new Map(), events: [], lastSeq: 0,
+    selected: null,            // {kind: "being"|"node", id}
+    hover: null,
+    beckoning: null,           // being id waiting for a target node
+    showBonds: false,
+    tab: "chronicle",
+    view: { x: 0, y: 0, zoom: 1 },
+    display: new Map(),        // being id -> {x, y, vx, vy}
+    feedback: null,            // {id, text, good}
+    seedDismissed: false,
+  };
+
+  window.cosmos = state; // handy for poking at the cosmos from the console
+  const $ = (id) => document.getElementById(id);
+  const canvas = $("cosmos");
+  const ctx = canvas.getContext("2d");
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const pretty = (r) => String(r ?? "").replace(/_/g, " ");
+  const hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; };
+  const resColor = (r) => RESOURCE_COLORS[r] || "#bbb";
+  // only touch the DOM when the markup really changed, so clicks are never lost to a re-render
+  const setHTML = (el, html) => { if (el._html !== html) { el._html = html; el.innerHTML = html; } };
+
+  // ---------- api ----------
+  async function api(path, body) {
+    const opts = body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+    const res = await fetch(path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok && res.status !== 409) throw Object.assign(new Error(data.error || res.statusText), { data });
+    return { status: res.status, data };
+  }
+
+  let polling = false;
+  async function poll() {
+    if (polling) return;
+    polling = true;
+    try {
+      const { data } = await api(`/world?since=${state.lastSeq}`);
+      ingest(data);
+    } catch (e) {
+      banner("The cosmos is unreachable…", 2000);
+    } finally {
+      polling = false;
+    }
+  }
+
+  function ingest(world) {
+    state.world = world;
+    state.nodes = new Map(world.nodes.map((n) => [n.id, n]));
+    state.beings = new Map(world.beings.map((b) => [b.id, b]));
+    if (world.events.length) {
+      state.lastSeq = world.events[0].seq;
+      state.events = world.events.concat(state.events).slice(0, 250);
+    }
+    for (const id of state.display.keys()) if (!state.beings.has(id)) state.display.delete(id);
+    if (state.selected && !(state.selected.kind === "being" ? state.beings : state.nodes).has(state.selected.id)) state.selected = null;
+    layoutNodes();
+    renderPanel();
+    const empty = world.nodes.length === 0;
+    $("genesis").style.display = (empty && !state.seedDismissed) || state.forceGenesis ? "grid" : "none";
+  }
+
+  // ---------- layout ----------
+  function layoutNodes() {
+    const list = [...state.nodes.values()];
+    list.forEach((n, i) => {
+      if (n.position && typeof n.position.x === "number") { n.wx = n.position.x; n.wy = n.position.y; }
+      else { const a = hash(n.id) * Math.PI * 2; const r = 1.15 + 0.1 * hash(n.id + "r"); n.wx = Math.cos(a) * r; n.wy = Math.sin(a) * r; }
+    });
+  }
+
+  function scale() { return Math.min(canvas.clientWidth, canvas.clientHeight) * 0.42 * state.view.zoom; }
+  function toScreen(wx, wy) {
+    const s = scale();
+    return [canvas.clientWidth / 2 + (wx - state.view.x) * s, canvas.clientHeight / 2 + (wy - state.view.y) * s];
+  }
+  function toWorld(sx, sy) {
+    const s = scale();
+    return [(sx - canvas.clientWidth / 2) / s + state.view.x, (sy - canvas.clientHeight / 2) / s + state.view.y];
+  }
+
+  function beingTarget(b, t) {
+    const n = state.nodes.get(b.at_node);
+    if (!n) { const a = hash(b.id) * 6.28; return [Math.cos(a) * 1.3, Math.sin(a) * 1.3]; }
+    const occupants = b.status === "faded" ? null : n.occupants;
+    const phase = hash(b.id) * Math.PI * 2;
+    const orbit = (b.status === "faded" ? 0.035 : 0.055 + 0.02 * hash(b.id + "o")) * Math.min(1.6, Math.max(1, Math.sqrt((occupants?.length || 1) / 3)));
+    const speed = b.status === "faded" ? 0 : 0.25 + 0.2 * hash(b.id + "s");
+    const a = phase + t * speed;
+    return [n.wx + Math.cos(a) * orbit, n.wy + Math.sin(a) * orbit];
+  }
+
+  function beingRadius(b) {
+    const s = Math.max(0.6, Math.min(1.3, state.view.zoom));
+    return (4 + 6 * Math.sqrt(Math.max(0, b.ichor) / (b.max_ichor || 200))) * s;
+  }
+
+  function nodeRadius(n) { return (10 + 3 * (n.resource_yield || 1) / 3) * Math.max(0.6, Math.min(1.6, state.view.zoom)); }
+
+  // ---------- drawing ----------
+  const stars = Array.from({ length: 160 }, (_, i) => ({ x: hash("x" + i), y: hash("y" + i), r: hash("r" + i) * 1.2 + 0.2, p: hash("p" + i) * 6 }));
+
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener("resize", resize);
+
+  function draw(now) {
+    const t = now / 1000;
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    ctx.clearRect(0, 0, W, H);
+
+    // background
+    const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+    g.addColorStop(0, "#151027"); g.addColorStop(1, "#07060d");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    for (const s of stars) {
+      ctx.globalAlpha = 0.25 + 0.25 * Math.sin(t * 0.7 + s.p);
+      ctx.fillStyle = "#cfc6ff";
+      ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // concentric rings, faint
+    const rings = new Set([...state.nodes.values()].map((n) => Math.round(Math.hypot(n.wx, n.wy) * 100) / 100).filter((r) => r > 0.01));
+    ctx.strokeStyle = "#ffffff08"; ctx.lineWidth = 1;
+    for (const r of rings) { const [cx, cy] = toScreen(0, 0); ctx.beginPath(); ctx.arc(cx, cy, r * scale(), 0, 6.283); ctx.stroke(); }
+
+    // edges
+    ctx.lineWidth = 1.2;
+    for (const n of state.nodes.values()) {
+      const [x1, y1] = toScreen(n.wx, n.wy);
+      for (const id of n.neighbors) {
+        if (id < n.id) continue;
+        const m = state.nodes.get(id); if (!m) continue;
+        const [x2, y2] = toScreen(m.wx, m.wy);
+        const sel = state.selected && state.selected.kind === "node" && (state.selected.id === n.id || state.selected.id === m.id);
+        ctx.strokeStyle = sel ? "#b98cff88" : "#8a7fc025";
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      }
+    }
+
+    // nodes
+    for (const n of state.nodes.values()) {
+      const [x, y] = toScreen(n.wx, n.wy);
+      const r = nodeRadius(n);
+      const col = resColor(n.resource_type);
+      const frac = n.max_reserve ? Math.max(0, Math.min(1, n.reserve / n.max_reserve)) : 0;
+      const glow = ctx.createRadialGradient(x, y, 0, x, y, r * 2.6);
+      glow.addColorStop(0, col + "55"); glow.addColorStop(1, col + "00");
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, r * 2.6, 0, 6.283); ctx.fill();
+      ctx.fillStyle = "#0d0b18"; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+      ctx.fillStyle = col; ctx.globalAlpha = 0.25 + 0.75 * frac;
+      ctx.beginPath(); ctx.arc(x, y, r * (0.35 + 0.55 * frac), 0, 6.283); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + frac * 6.283); ctx.stroke();
+      const isSel = state.selected && state.selected.kind === "node" && state.selected.id === n.id;
+      const isHover = state.hover && state.hover.kind === "node" && state.hover.id === n.id;
+      if (isSel || isHover || state.beckoning) {
+        ctx.strokeStyle = isSel ? "#ffffff" : "#ffffff66"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 6.283); ctx.stroke();
+      }
+      if (state.view.zoom > 1.4 || isSel || isHover) {
+        ctx.fillStyle = "#cfc8e6cc"; ctx.font = "11px " + getComputedStyle(document.body).fontFamily; ctx.textAlign = "center";
+        ctx.fillText(n.name, x, y + r + 14);
+      }
+    }
+
+    // being positions (smoothed)
+    const pos = new Map();
+    for (const b of state.beings.values()) {
+      const [tx, ty] = beingTarget(b, t);
+      let d = state.display.get(b.id);
+      if (!d) { d = { x: tx, y: ty }; state.display.set(b.id, d); }
+      const k = 0.06;
+      d.vx = (tx - d.x) * k; d.vy = (ty - d.y) * k;
+      d.x += d.vx; d.y += d.vy;
+      pos.set(b.id, toScreen(d.x, d.y));
+    }
+
+    // bonds
+    const selBeing = state.selected && state.selected.kind === "being" ? state.beings.get(state.selected.id) : null;
+    const drawBond = (a, bId, aff) => {
+      const p1 = pos.get(a.id), p2 = pos.get(bId); if (!p1 || !p2) return;
+      ctx.strokeStyle = aff >= 0 ? `rgba(126,240,200,${Math.min(0.8, 0.15 + aff / 40)})` : `rgba(255,107,122,${Math.min(0.8, 0.2 - aff / 25)})`;
+      ctx.lineWidth = 1 + Math.min(3, Math.abs(aff) / 12);
+      ctx.beginPath(); ctx.moveTo(p1[0], p1[1]);
+      const mx = (p1[0] + p2[0]) / 2, my = (p1[1] + p2[1]) / 2 - 20;
+      ctx.quadraticCurveTo(mx, my, p2[0], p2[1]); ctx.stroke();
+    };
+    if (state.showBonds) {
+      for (const b of state.beings.values()) for (const [id, aff] of Object.entries(b.bonds)) if (aff >= 12 && id > b.id) drawBond(b, id, aff);
+    }
+    if (selBeing) for (const [id, aff] of Object.entries(selBeing.bonds)) if (Math.abs(aff) >= 3) drawBond(selBeing, id, aff);
+
+    // beings
+    for (const b of state.beings.values()) {
+      const p = pos.get(b.id); if (!p) continue;
+      const [x, y] = p;
+      const r = beingRadius(b);
+      const faded = b.status === "faded";
+      const hue = Math.floor(hash(b.id) * 360);
+      const body = faded ? "rgba(150,145,170,0.35)" : `hsl(${hue} 70% ${55 + 10 * Math.sin(t + hash(b.id) * 9)}%)`;
+      const isSel = selBeing && selBeing.id === b.id;
+
+      if (b.incantation && b.incantation.awaiting) {
+        const pulse = 0.5 + 0.5 * Math.sin(t * 4 + hash(b.id) * 6);
+        ctx.strokeStyle = `rgba(255,207,107,${0.35 + 0.5 * pulse})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, r + 5 + 3 * pulse, 0, 6.283); ctx.stroke();
+      }
+      if (!faded) {
+        const aura = ctx.createRadialGradient(x, y, 0, x, y, r * 2.2);
+        aura.addColorStop(0, `hsla(${hue},80%,60%,0.35)`); aura.addColorStop(1, `hsla(${hue},80%,60%,0)`);
+        ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 6.283); ctx.fill();
+      }
+      // wobbling body with tendrils
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      const lobes = 3 + Math.floor(hash(b.id + "l") * 4);
+      for (let i = 0; i <= 24; i++) {
+        const a = (i / 24) * 6.283;
+        const wob = faded ? 0.05 : 0.18;
+        const rr = r * (1 + wob * Math.sin(lobes * a + t * (faded ? 0.5 : 2.2) + hash(b.id) * 20));
+        const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.closePath(); ctx.fill();
+      if (isSel) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.stroke(); }
+      // eye looking where it moves
+      const d = state.display.get(b.id) || { vx: 0, vy: 0 };
+      const look = Math.hypot(d.vx, d.vy) > 1e-5 ? Math.atan2(d.vy, d.vx) : hash(b.id) * 6.28;
+      const er = Math.max(1.6, r * 0.38);
+      ctx.fillStyle = faded ? "#2a2738" : "#f6f1ff";
+      ctx.beginPath(); ctx.arc(x, y, er, 0, 6.283); ctx.fill();
+      if (!faded) {
+        ctx.fillStyle = "#120a22";
+        ctx.beginPath(); ctx.arc(x + Math.cos(look) * er * 0.4, y + Math.sin(look) * er * 0.4, er * 0.5, 0, 6.283); ctx.fill();
+      }
+      if (isSel || (state.hover && state.hover.kind === "being" && state.hover.id === b.id)) {
+        ctx.fillStyle = "#fff"; ctx.font = "12px " + getComputedStyle(document.body).fontFamily; ctx.textAlign = "center";
+        ctx.fillText(b.name, x, y - r - 9);
+      }
+    }
+    state.screenPos = pos;
+
+    // camera follows the selected being
+    if (state.follow) {
+      const d = state.display.get(state.follow);
+      if (d && state.beings.has(state.follow)) {
+        state.view.x += (d.x - state.view.x) * 0.08;
+        state.view.y += (d.y - state.view.y) * 0.08;
+      } else state.follow = null;
+    }
+    requestAnimationFrame(draw);
+  }
+
+  // ---------- interaction ----------
+  function pick(sx, sy) {
+    let best = null, bestD = Infinity;
+    if (state.screenPos) for (const [id, [x, y]] of state.screenPos) {
+      const b = state.beings.get(id); if (!b) continue;
+      const d = Math.hypot(sx - x, sy - y);
+      if (d < beingRadius(b) + 6 && d < bestD) { best = { kind: "being", id }; bestD = d; }
+    }
+    if (best && !state.beckoning) return best;
+    best = null; bestD = Infinity;
+    for (const n of state.nodes.values()) {
+      const [x, y] = toScreen(n.wx, n.wy);
+      const d = Math.hypot(sx - x, sy - y);
+      if (d < nodeRadius(n) + 6 && d < bestD) { best = { kind: "node", id: n.id }; bestD = d; }
+    }
+    return best;
+  }
+
+  let drag = null;
+  canvas.addEventListener("pointerdown", (e) => {
+    drag = { x: e.clientX, y: e.clientY, vx: state.view.x, vy: state.view.y, moved: false };
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    if (drag) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (Math.hypot(dx, dy) > 4) { drag.moved = true; state.follow = null; canvas.classList.add("dragging"); }
+      if (drag.moved) { state.view.x = drag.vx - dx / scale(); state.view.y = drag.vy - dy / scale(); }
+      return;
+    }
+    state.hover = pick(sx, sy);
+    const tip = $("tooltip");
+    if (state.hover) {
+      const ent = state.hover.kind === "being" ? state.beings.get(state.hover.id) : state.nodes.get(state.hover.id);
+      tip.innerHTML = state.hover.kind === "being"
+        ? `<b>${esc(ent.name)}</b> · ${esc(ent.status === "faded" ? "faded" : ent.intent)}<br><span style="color:var(--muted)">ichor ${ent.ichor} · longs for ${esc(pretty(ent.desire))}</span>`
+        : `<b>${esc(ent.name)}</b><br><span style="color:var(--muted)">${esc(pretty(ent.resource_type))} · reserve ${ent.reserve} · ${ent.occupants.length} present</span>`;
+      tip.style.left = sx + "px"; tip.style.top = sy + "px"; tip.style.display = "block";
+    } else tip.style.display = "none";
+  });
+  canvas.addEventListener("pointerup", async (e) => {
+    canvas.classList.remove("dragging");
+    const wasDrag = drag && drag.moved; drag = null;
+    if (wasDrag) return;
+    const rect = canvas.getBoundingClientRect();
+    const hit = pick(e.clientX - rect.left, e.clientY - rect.top);
+    if (state.beckoning) {
+      const beingId = state.beckoning;
+      setBeckon(null);
+      if (hit && hit.kind === "node") {
+        try { await api("/being/beckon", { id: beingId, node_id: hit.id }); banner("The being heeds your call.", 1500); poll(); }
+        catch (err) { banner(err.message, 2000); }
+      }
+      return;
+    }
+    select(hit);
+  });
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+    const [wx, wy] = toWorld(sx, sy);
+    state.view.zoom = Math.max(0.4, Math.min(6, state.view.zoom * Math.exp(-e.deltaY * 0.0015)));
+    const [wx2, wy2] = toWorld(sx, sy);
+    state.view.x += wx - wx2; state.view.y += wy - wy2;
+  }, { passive: false });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { setBeckon(null); select(null); }
+  });
+
+  function select(sel) {
+    state.selected = sel;
+    state.follow = sel && sel.kind === "being" ? sel.id : null;
+    state.feedback = null;
+    renderPanel(true);
+  }
+
+  function setBeckon(id) {
+    state.beckoning = id;
+    canvas.classList.toggle("beckoning", !!id);
+    if (id) banner("Click a place to beckon the being there (Esc to cancel)");
+    else hideBanner();
+  }
+
+  let bannerTimer;
+  function banner(text, ms) {
+    const el = $("banner"); el.textContent = text; el.style.display = "block";
+    clearTimeout(bannerTimer);
+    if (ms) bannerTimer = setTimeout(hideBanner, ms);
+  }
+  function hideBanner() { $("banner").style.display = "none"; }
+
+  // ---------- panel ----------
+  function nameOf(id) { const b = state.beings.get(id); return b ? b.name : "a forgotten being"; }
+  function beingLink(id) { return `<a class="link" data-being="${esc(id)}">${esc(nameOf(id))}</a>`; }
+  function nodeLink(id) { const n = state.nodes.get(id); return n ? `<a class="link" data-node="${esc(id)}">${esc(n.name)}</a>` : "nowhere"; }
+  function fmtDue(ms) {
+    const s = Math.max(0, Math.round((ms - Date.now()) / 1000));
+    if (s < 60) return `${s}s`; if (s < 3600) return `${Math.round(s / 60)}m`; if (s < 86400) return `${Math.round(s / 3600)}h`; return `${Math.round(s / 86400)}d`;
+  }
+
+  function renderStats() {
+    const sim = state.world?.simulation || {};
+    $("s-tick").textContent = sim.tick ?? 0;
+    $("s-pop").textContent = `${sim.population ?? 0}`;
+    $("s-faded").textContent = sim.faded ?? 0;
+    $("s-nodes").textContent = state.nodes.size;
+    $("toggle").textContent = sim.running ? "❚❚ Slumber" : "▶ Stir";
+    $("toggle").classList.toggle("primary", !sim.running);
+    const speed = $("speed");
+    if (document.activeElement !== speed && sim.tick_ms) speed.value = 3100 - sim.tick_ms;
+    $("speed-label").textContent = `${sim.tick_ms ?? "?"}ms/tick`;
+    $("bonds-toggle").classList.toggle("primary", state.showBonds);
+    setHTML($("legend"), `<div class="chips">${(state.world?.resources || []).map((r) => `<span class="chip"><span class="dot" style="background:${resColor(r)}"></span>${esc(pretty(r))}</span>`).join("")}</div>`);
+  }
+
+  // never re-render the side panel under a pressed pointer: the click would be lost
+  let panelFrozen = false;
+  document.querySelector("aside").addEventListener("pointerdown", () => { panelFrozen = true; });
+  window.addEventListener("pointerup", () => setTimeout(() => { panelFrozen = false; }, 0));
+
+  function renderPanel(force) {
+    renderStats();
+    if (panelFrozen && !force) return;
+    const sel = $("selection");
+    // don't clobber an input the user is typing into
+    const active = document.activeElement;
+    if (!force && active && sel.contains(active) && active.tagName === "INPUT") { renderTab(); return; }
+    if (!state.selected) {
+      setHTML(sel, `<div class="card"><div class="thought">Beings roam a landscape of haunted places, gathering what they desire, meeting, gifting, quarrelling and summoning new beings. Each holds an incantation; answer it when it is whispered to strengthen the being — even to call it back from the void.</div><div class="empty">Select a being or a place.</div></div>`);
+    } else if (state.selected.kind === "being") {
+      setHTML(sel, beingCard(state.beings.get(state.selected.id)));
+    } else {
+      setHTML(sel, nodeCard(state.nodes.get(state.selected.id)));
+    }
+    renderTab();
+  }
+
+  function beingCard(b) {
+    if (!b) return "";
+    const pct = Math.round(100 * b.ichor / (b.max_ichor || 200));
+    const ichorCol = b.ichor < 30 ? "var(--danger)" : b.ichor < 80 ? "var(--warn)" : "var(--accent-2)";
+    const res = Object.entries(b.resources).sort((a, c) => c[1] - a[1]);
+    const bonds = Object.entries(b.bonds).sort((a, c) => c[1] - a[1]);
+    const inc = b.incantation || {};
+    const fb = state.feedback && state.feedback.id === b.id ? `<div class="feedback ${state.feedback.good ? "good" : "bad"}">${esc(state.feedback.text)}</div>` : "";
+    const lin = b.lineage || {};
+    return `<div class="card">
+      <div class="row"><h2>${esc(b.name)}</h2><span class="chip">${b.status === "faded" ? "faded" : esc(b.intent || "")}</span></div>
+      <div class="thought">“${esc(b.thought || "…")}”</div>
+      <div class="row"><span>ichor</span><span>${b.ichor} / ${b.max_ichor}</span></div>
+      <div class="bar"><i style="width:${pct}%;background:${ichorCol}"></i></div>
+      <div class="row"><span>dwells at</span><span>${nodeLink(b.at_node)}</span></div>
+      <div class="row"><span>longs for</span><span class="chip desire"><span class="dot" style="background:${resColor(b.desire)}"></span>${esc(pretty(b.desire))}</span></div>
+      <div class="row"><span>knows</span><span>${b.known_nodes} places · visited ${b.visited_nodes}</span></div>
+      <div class="row"><span>lineage</span><span>generation ${lin.generation ?? 0} · age ${lin.age ?? 0}/${lin.lifespan ?? "?"}</span></div>
+      ${(lin.parents || []).length ? `<div class="row"><span>summoned by</span><span>${lin.parents.map(beingLink).join(" & ")}</span></div>` : ""}
+      <h3>Carries</h3>
+      <div class="chips">${res.length ? res.map(([r, n]) => `<span class="chip"><span class="dot" style="background:${resColor(r)}"></span>${n} ${esc(pretty(r))}</span>`).join("") : '<span class="empty">nothing</span>'}</div>
+      <h3>Bonds</h3>
+      <div class="chips">${bonds.length ? bonds.slice(0, 12).map(([id, a]) => `<span class="chip" style="border-color:${a >= 0 ? "#7ef0c855" : "#ff6b7a66"}">${beingLink(id)} ${a > 0 ? "+" : ""}${a}</span>`).join("") : '<span class="empty">a stranger to all</span>'}</div>
+      <h3>Incantation · box ${inc.box ?? 1}${inc.streak ? ` · streak ${inc.streak}` : ""}</h3>
+      <div class="incantation ${inc.awaiting ? "awaiting" : ""}">${esc(inc.front || "—")}</div>
+      ${inc.awaiting
+        ? `<form class="recall" data-recall="${esc(b.id)}"><input type="text" name="answer" placeholder="${inc.has_back ? "Speak the answer…" : "Acknowledge it (any word)"}" autocomplete="off"><button class="primary">Answer</button></form>`
+        : `<div class="feedback" style="color:var(--muted)">It will whisper again in ${fmtDue(inc.due_at)}.</div>`}
+      ${fb}
+      <div class="controls" style="margin-top:12px">
+        <button data-beckon="${esc(b.id)}" ${b.status === "faded" ? "disabled" : ""}>Beckon…</button>
+        <button data-edit="${esc(b.id)}">Rebind incantation</button>
+      </div>
+      <form class="form-grid" data-rebind="${esc(b.id)}" style="display:${state.editing === b.id ? "grid" : "none"}">
+        <input type="text" name="front" placeholder="Front (the question)" required>
+        <input type="text" name="back" placeholder="Back (answer — leave empty for a declaration)">
+        <button class="primary">Bind</button>
+      </form>
+    </div>`;
+  }
+
+  function nodeCard(n) {
+    if (!n) return "";
+    const pct = n.max_reserve ? Math.round(100 * n.reserve / n.max_reserve) : 0;
+    const present = n.occupants.filter((id) => state.beings.has(id));
+    const remains = [...state.beings.values()].filter((b) => b.status === "faded" && b.at_node === n.id);
+    return `<div class="card">
+      <h2>${esc(n.name)}</h2>
+      <div class="row" style="margin-top:8px"><span>resource</span><span class="chip"><span class="dot" style="background:${resColor(n.resource_type)}"></span>${esc(pretty(n.resource_type))} · yields ${n.resource_yield}</span></div>
+      <div class="row"><span>reserve</span><span>${n.reserve} / ${n.max_reserve}</span></div>
+      <div class="bar"><i style="width:${pct}%;background:${resColor(n.resource_type)}"></i></div>
+      <h3>Present (${present.length})</h3>
+      <div class="chips">${present.length ? present.map((id) => `<span class="chip">${beingLink(id)}</span>`).join("") : '<span class="empty">no one</span>'}</div>
+      ${remains.length ? `<h3>Remains of the faded</h3><div class="chips">${remains.map((b) => `<span class="chip">${beingLink(b.id)}</span>`).join("")}</div>` : ""}
+      <h3>Paths lead to</h3>
+      <div class="chips">${n.neighbors.map((id) => `<span class="chip">${nodeLink(id)}</span>`).join("")}</div>
+      <h3>Summon a being here</h3>
+      <form class="form-grid" data-summon="${esc(n.id)}">
+        <input type="text" name="name" placeholder="Name (optional)">
+        <input type="text" name="front" placeholder="Incantation front, e.g. 'capital of Peru'">
+        <input type="text" name="back" placeholder="Incantation back, e.g. 'Lima'">
+        <button class="primary">Summon</button>
+      </form>
+    </div>`;
+  }
+
+  function renderTab() {
+    if (panelFrozen) return;
+    for (const t of ["chronicle", "whispers", "beings"]) $("tab-" + t).classList.toggle("on", state.tab === t);
+    const whispering = [...state.beings.values()].filter((b) => b.incantation && b.incantation.awaiting);
+    $("whisper-count").textContent = whispering.length ? `(${whispering.length})` : "";
+    const body = $("tab-body");
+    if (body.contains(document.activeElement) && document.activeElement.tagName === "INPUT") return;
+    if (state.tab === "chronicle") {
+      setHTML(body, state.events.length
+        ? `<ul class="events">${state.events.slice(0, 80).map((e) => `<li class="${esc(e.kind)}" ${e.beings && e.beings[0] ? `data-being="${esc(e.beings[0])}" style="cursor:pointer"` : ""}><span class="k">${esc(e.kind)} · ${e.tick}</span>${esc(e.text)}</li>`).join("")}</ul>`
+        : '<div class="empty">Nothing has happened yet. Stir the cosmos.</div>');
+    } else if (state.tab === "whispers") {
+      setHTML(body, whispering.length
+        ? `<ul class="events whispers">${whispering.map((b) => `<li data-being="${esc(b.id)}" style="cursor:pointer"><span>${esc(b.name)}${b.status === "faded" ? " (faded)" : ""}</span><span style="font-family:var(--sans)">${esc(b.incantation.front)}</span></li>`).join("")}</ul>`
+        : '<div class="empty">No being is whispering. Incantations come due over time (20s, 1m, 5m, 30m, 2h, 1d as they climb the boxes).</div>');
+    } else {
+      const list = [...state.beings.values()].sort((a, b) => (a.status === b.status ? b.ichor - a.ichor : a.status === "faded" ? 1 : -1));
+      setHTML(body, list.length
+        ? `<ul class="events">${list.map((b) => `<li data-being="${esc(b.id)}" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span>${esc(b.name)}</span><span style="color:var(--muted)">${b.status === "faded" ? "faded" : `${b.ichor} ichor · ${esc(b.intent)}`}</span></li>`).join("")}</ul>`
+        : '<div class="empty">No beings exist.</div>');
+    }
+  }
+
+  // delegated clicks in the side panel
+  document.querySelector("aside").addEventListener("click", (e) => {
+    const el = e.target.closest("[data-being],[data-node],[data-beckon],[data-edit]");
+    if (!el) return;
+    if (el.dataset.being) { select({ kind: "being", id: el.dataset.being }); focusOn(el.dataset.being); }
+    else if (el.dataset.node) { select({ kind: "node", id: el.dataset.node }); focusOn(el.dataset.node); }
+    else if (el.dataset.beckon) setBeckon(el.dataset.beckon);
+    else if (el.dataset.edit) { state.editing = state.editing === el.dataset.edit ? null : el.dataset.edit; renderPanel(true); }
+  });
+
+  function focusOn(id) {
+    state.view.zoom = Math.max(state.view.zoom, 1.6);
+    const n = state.nodes.get(id);
+    // beings are followed by the camera (see draw)
+    if (n) { state.view.x = n.wx; state.view.y = n.wy; }
+  }
+
+  document.querySelector("aside").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target, data = Object.fromEntries(new FormData(f));
+    try {
+      if (f.dataset.recall) {
+        const { status, data: r } = await api("/being/recall", { id: f.dataset.recall, answer: data.answer });
+        state.feedback = status === 409
+          ? { id: f.dataset.recall, good: false, text: "It is not whispering yet." }
+          : r.correct
+            ? { id: f.dataset.recall, good: true, text: `True! Ichor surges (+${r.ichor_gain}). The incantation rises to box ${r.box}.` }
+            : { id: f.dataset.recall, good: false, text: `False. It was “${r.expected}”. The incantation returns to box 1.` };
+      } else if (f.dataset.rebind) {
+        await api("/being/incantation", { id: f.dataset.rebind, front: data.front, back: data.back });
+        state.feedback = { id: f.dataset.rebind, good: true, text: "The incantation is bound." };
+        state.editing = null;
+      } else if (f.dataset.summon) {
+        const body = { at_node: f.dataset.summon };
+        if (data.name) body.name = data.name;
+        if (data.front) body.incantation = { front: data.front, back: data.back || "" };
+        const { data: r } = await api("/being", body);
+        await poll();
+        select({ kind: "being", id: r.being_id });
+      }
+      document.activeElement && document.activeElement.blur();
+      await poll();
+      renderPanel(true);
+    } catch (err) { banner(err.message, 2500); }
+  });
+
+  // ---------- header controls ----------
+  $("toggle").addEventListener("click", async () => {
+    const running = state.world?.simulation?.running;
+    await api(running ? "/simulation/stop" : "/simulation/start", {});
+    poll();
+  });
+  $("speed").addEventListener("change", async (e) => {
+    await api("/simulation/speed", { tick_ms: 3100 - Number(e.target.value) });
+    poll(); schedule();
+  });
+  $("bonds-toggle").addEventListener("click", () => { state.showBonds = !state.showBonds; renderStats(); });
+  $("new-cosmos").addEventListener("click", () => { state.forceGenesis = true; $("genesis").style.display = "grid"; });
+  $("seed-cancel").addEventListener("click", () => { state.forceGenesis = false; state.seedDismissed = true; $("genesis").style.display = "none"; });
+  $("seed-go").addEventListener("click", async () => {
+    const hasCosmos = state.nodes.size > 0;
+    if (hasCosmos && !confirm("Unmake the current cosmos? Every being and place will be destroyed.")) return;
+    const rings = $("seed-rings").value.split(",").map((s) => parseInt(s, 10)).filter((n) => n > 0);
+    $("seed-go").disabled = true; $("seed-error").textContent = "";
+    try {
+      await api("/cosmos/seed", { reset: true, beings: Number($("seed-beings").value) || 12, rings });
+      state.events = []; state.lastSeq = 0; state.selected = null; state.display.clear();
+      state.forceGenesis = false;
+      state.view = { x: 0, y: 0, zoom: 1 };
+      await api("/simulation/start", {});
+      await poll();
+    } catch (err) { $("seed-error").textContent = err.message; }
+    finally { $("seed-go").disabled = false; }
+  });
+  for (const t of ["chronicle", "whispers", "beings"]) $("tab-" + t).addEventListener("click", () => { state.tab = t; renderTab(); });
+
+  // ---------- loop ----------
+  let timer;
+  function schedule() {
+    clearTimeout(timer);
+    const tick = state.world?.simulation?.tick_ms || 1000;
+    timer = setTimeout(async () => { await poll(); schedule(); }, Math.max(300, Math.min(1000, tick)));
+  }
+  // refresh countdowns even when nothing changes
+  setInterval(() => { if (state.selected && state.selected.kind === "being") renderPanel(); }, 1000);
+
+  resize();
+  poll().then(schedule);
+  requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>
