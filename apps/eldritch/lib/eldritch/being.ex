@@ -140,6 +140,29 @@ defmodule Eldritch.Being do
       "beings" => [being_id],
       "node" => vals["at_node"]
     })
+    mourn(being_id, vals)
+  end
+
+  # an encounter with the Real: those bound to the faded being are marked by its loss
+  defp mourn(being_id, vals) do
+    mourners =
+      for {other_id, affinity} <- vals["bonds"] || %{},
+          affinity >= 10,
+          pid = Cosmos.Entity.Cache.lookup(other_id),
+          pid != nil,
+          Cosmos.Entity.Server.value(pid, "status", "alive") != "faded" do
+        Eldritch.Lacan.update(pid, &Eldritch.Lacan.trauma(&1, vals["at_node"], "#{vals["name"]} faded"))
+        {other_id, Cosmos.Entity.Server.value(pid, "name")}
+      end
+
+    if mourners != [] do
+      names = mourners |> Enum.map(&elem(&1, 1)) |> Enum.join(", ")
+
+      Eldritch.Chronicle.record(:trauma, "#{names} mourn #{vals["name"]}.", %{
+        "beings" => Enum.map(mourners, &elem(&1, 0)) ++ [being_id],
+        "node" => vals["at_node"]
+      })
+    end
   end
 
   def revive(being_id, vals) do

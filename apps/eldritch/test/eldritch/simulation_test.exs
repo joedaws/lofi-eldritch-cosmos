@@ -138,7 +138,7 @@ defmodule Eldritch.SimulationTest do
     assert vals(being)["at_node"] == c
   end
 
-  test "communion: beings meet, share knowledge and gift what the other desires" do
+  test "communion: beings meet, share knowledge and answer demands" do
     n = node!()
     giver = being!(%{"at_node" => n, "desire" => "bone"})
     receiver = being!(%{"at_node" => n, "desire" => "blood"})
@@ -151,16 +151,25 @@ defmodule Eldritch.SimulationTest do
     )
 
     Eldritch.Genesis.flush()
-    Eldritch.System.Communion.update_components(Eldritch.System.Communion)
+
+    # demands are not made every time two beings meet
+    Enum.reduce_while(1..30, nil, fn _, _ ->
+      Eldritch.System.Communion.update_components(Eldritch.System.Communion)
+
+      if get_in(vals(receiver), ["inventory", "resources", "blood"]),
+        do: {:halt, :ok},
+        else: {:cont, nil}
+    end)
 
     g = vals(giver)
     r = vals(receiver)
-    assert get_in(g, ["inventory", "resources", "blood"]) == 2
-    assert get_in(r, ["inventory", "resources", "blood"]) == 3
+    received = get_in(r, ["inventory", "resources", "blood"]) || 0
+    assert received > 0
+    assert received + (get_in(g, ["inventory", "resources", "blood"]) || 0) == 5
     assert r["bonds"][giver] > 0 and g["bonds"][receiver] > 0
     assert get_in(r, ["observations", "nodes", "far-away"]) == "obsidian"
 
-    kinds = Eldritch.Chronicle.recent(10) |> Enum.map(& &1["kind"])
+    kinds = Eldritch.Chronicle.recent(50) |> Enum.map(& &1["kind"])
     assert "meet" in kinds and "gift" in kinds
   end
 

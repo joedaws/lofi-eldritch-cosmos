@@ -2,7 +2,9 @@ defmodule Eldritch.System.Volition do
   @moduledoc """
   The will of the beings. Every cycle each living being:
 
-    1. ages by one cycle; past its lifespan its ichor withers
+    1. ages by one cycle; past its lifespan its ichor withers. Its psyche
+       lives a tick too (`Eldritch.Lacan.tick/2`): lack grows, the knot of
+       the registers loosens or reties
     2. fades if its ichor has run dry
     3. is placed somewhere if it is nowhere
     4. otherwise performs the highest priority action
@@ -14,6 +16,8 @@ defmodule Eldritch.System.Volition do
   @actions [
              Eldritch.Being.Actions.Consume,
              Eldritch.Being.Actions.ShiftDesire,
+             Eldritch.Being.Actions.Anxiety,
+             Eldritch.Being.Actions.Repetition,
              Eldritch.Being.Actions.Forage,
              Eldritch.Being.Actions.Linger,
              Eldritch.Being.Actions.MoveToResource,
@@ -31,10 +35,15 @@ defmodule Eldritch.System.Volition do
     beings = Entities.being_list() |> Enum.filter(&Map.has_key?(&1, "volition"))
     living = Enum.filter(beings, &Entities.alive?/1)
     kin_at = Enum.group_by(living, & &1["at_node"])
+    beings_by_id = Map.new(beings, &{&1["id"], &1})
+    other = Eldritch.Lacan.big_other(beings)
+    Eldritch.Lacan.store_big_other(other)
+
+    shared = %{graph: graph, kin_at: kin_at, beings_by_id: beings_by_id, other: other}
 
     for being <- living do
       try do
-        act(being, graph, kin_at)
+        act(being, shared)
       catch
         kind, reason ->
           Logger.warning("#{being["name"]} could not act: #{Exception.format(kind, reason)}")
@@ -44,9 +53,11 @@ defmodule Eldritch.System.Volition do
     Eldritch.Simulation.tick()
   end
 
-  defp act(being, graph, kin_at) do
-    ctx = %{id: being["id"], pid: being["pid"], being: being, graph: graph, kin_at: kin_at}
+  defp act(being, shared) do
+    ctx = Map.merge(shared, %{id: being["id"], pid: being["pid"], being: being})
+    graph = ctx.graph
     elder = age(ctx)
+    live_psyche(ctx)
 
     cond do
       (being["ichor"] || 0) <= 0 ->
@@ -67,6 +78,32 @@ defmodule Eldritch.System.Volition do
           nil -> think(ctx, {"rest", "I rest."})
           action -> think(ctx, action.perform(ctx))
         end
+    end
+  end
+
+  defp live_psyche(ctx) do
+    before = Eldritch.Lacan.unknotted(Eldritch.Lacan.normalize(ctx.being["psyche"]))
+    starving = (ctx.being["ichor"] || 0) < 20
+    desire = get_in(ctx.being, ["volition", "desire"])
+    near_object = get_in(ctx.graph, [ctx.being["at_node"], "resource_type"]) == desire
+    psyche = Eldritch.Lacan.update(ctx.pid, &Eldritch.Lacan.tick(&1, starving, near_object))
+    now = psyche && Eldritch.Lacan.unknotted(psyche)
+
+    cond do
+      psyche == nil or now == before ->
+        :ok
+
+      now == nil ->
+        Eldritch.Chronicle.record(:knot, "#{ctx.being["name"]}'s knot holds again.", %{
+          "beings" => [ctx.id]
+        })
+
+      true ->
+        Eldritch.Chronicle.record(
+          :knot,
+          "#{ctx.being["name"]}'s knot loosens: the #{String.capitalize(now)} overwhelms it.",
+          %{"beings" => [ctx.id]}
+        )
     end
   end
 

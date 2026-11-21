@@ -78,7 +78,16 @@
   .events li.fade .k, .events li.rivalry .k { color: var(--danger); }
   .events li.gift .k, .events li.succor .k { color: var(--accent-2); }
   .events li.whisper .k { color: var(--warn); }
-  .events li.desire .k, .events li.elder .k { color: var(--accent); }
+  .events li.desire .k, .events li.elder .k, .events li.identify .k { color: var(--accent); }
+  .events li.trauma .k, .events li.anxiety .k, .events li.refusal .k { color: var(--danger); }
+  .events li.knot .k { color: var(--warn); }
+  .events li.working_through .k { color: var(--good); }
+  .other { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .reason { font-size: 12px; color: var(--muted); font-style: italic; text-align: right; margin: -2px 0 4px; }
+  .registers { display: grid; grid-template-columns: 74px 1fr 38px; gap: 3px 8px; align-items: center; font-size: 12px; }
+  .registers .bar { margin: 0; }
+  .registers .loose { color: var(--warn); font-weight: 600; }
+  .chain { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 12px; color: var(--faint); }
   .whispers li { display: flex; justify-content: space-between; gap: 8px; }
   .legend { position: absolute; left: 12px; bottom: 12px; background: #110f1dd9; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; font-size: 12px; max-width: calc(100% - 24px); }
   .legend .chips { gap: 4px 10px; }
@@ -152,6 +161,7 @@
       <div class="stat"><small>faded</small><b id="s-faded">0</b></div>
       <div class="stat"><small>places</small><b id="s-nodes">0</b></div>
     </div>
+    <div class="other" id="big-other" title="The desire of the big Other: what the cosmos as a whole desires and exchanges"></div>
   </header>
   <div id="scroll">
     <div id="selection"></div>
@@ -290,13 +300,23 @@
         bonds: row.bonds, known_nodes: row[9], visited_nodes: row[10],
         lineage: { generation: info.generation, parents: info.parents, age: row[11], lifespan: info.lifespan },
         incantation: { front: info.front, has_back: info.has_back, box: row[12], awaiting: row[13] === 1, streak: row[14], due_at: null },
+        psyche: row.length > 15 ? {
+          lack: row[15], jouissance: row[16],
+          registers: { real: row[17] / 1000, symbolic: row[18] / 1000, imaginary: row[19] / 1000 },
+          unknotted: row[20] >= 0 ? S[row[20]] : null,
+          identification: row[21] >= 0 && R.beings[row[21]] ? R.beings[row[21]].id : null,
+          symptom: row[22] >= 0 ? { node: R.nodes[row[22]].id, cause: S[row[23]] } : null,
+          reason: S[row[24]], chain: row[25].map((k) => S[k]), objet_a: S[row[26]],
+        } : null,
       };
     });
     // events up to this tick, most recent first
     let hi = 0; while (hi < replay.eventTicks.length && replay.eventTicks[hi] <= f.t) hi++;
     const events = R.events.slice(Math.max(0, hi - 250), hi).reverse();
+    const big_other = {};
+    for (let k = 0; k < (f.o || []).length; k += 2) big_other[S[f.o[k]]] = f.o[k + 1] / 100;
     return {
-      nodes, beings, events, replaceEvents: true, resources: R.meta.resources,
+      nodes, beings, events, replaceEvents: true, resources: R.meta.resources, big_other,
       simulation: { running: replay.playing, tick: f.t, tick_ms: Math.round(1000 / replay.fps), population, faded: beings.length - population, now: f.now },
     };
   }
@@ -478,7 +498,7 @@
       const lobes = 3 + Math.floor(hash(b.id + "l") * 4);
       for (let i = 0; i <= 24; i++) {
         const a = (i / 24) * 6.283;
-        const wob = faded ? 0.05 : 0.18;
+        const wob = faded ? 0.05 : b.psyche && b.psyche.unknotted ? 0.32 : 0.18;
         const rr = r * (1 + wob * Math.sin(lobes * a + t * (faded ? 0.5 : 2.2) + hash(b.id) * 20));
         const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr;
         i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
@@ -550,7 +570,7 @@
     if (state.hover) {
       const ent = state.hover.kind === "being" ? state.beings.get(state.hover.id) : state.nodes.get(state.hover.id);
       tip.innerHTML = state.hover.kind === "being"
-        ? `<b>${esc(ent.name)}</b> · ${esc(ent.status === "faded" ? "faded" : ent.intent)}<br><span style="color:var(--muted)">ichor ${ent.ichor} · longs for ${esc(pretty(ent.desire))}</span>`
+        ? `<b>${esc(ent.name)}</b> · ${esc(ent.status === "faded" ? "faded" : ent.intent)}<br><span style="color:var(--muted)">ichor ${ent.ichor} · lack ${ent.psyche?.lack ?? "?"} · longs for ${esc(pretty(ent.desire))}</span>`
         : `<b>${esc(ent.name)}</b><br><span style="color:var(--muted)">${esc(pretty(ent.resource_type))} · reserve ${ent.reserve} · ${ent.occupants.length} present</span>`;
       tip.style.left = sx + "px"; tip.style.top = sy + "px"; tip.style.display = "block";
     } else tip.style.display = "none";
@@ -636,6 +656,8 @@
       $("speed-label").textContent = `${sim.tick_ms ?? "?"}ms/tick`;
     }
     $("bonds-toggle").classList.toggle("primary", state.showBonds);
+    const other = Object.entries(state.world?.big_other || {}).sort((a, b) => b[1] - a[1]).slice(0, 4);
+    setHTML($("big-other"), other.length ? `<span>the Other desires</span>${other.map(([r]) => `<span class="chip"><span class="dot" style="background:${resColor(r)}"></span>${esc(pretty(r))}</span>`).join("")}` : "");
     setHTML($("legend"), `<div class="chips">${(state.world?.resources || []).map((r) => `<span class="chip"><span class="dot" style="background:${resColor(r)}"></span>${esc(pretty(r))}</span>`).join("")}</div>`);
   }
 
@@ -662,6 +684,22 @@
     renderTab();
   }
 
+  // the being's psyche (see Eldritch.Lacan)
+  function psycheSection(b) {
+    const p = b.psyche;
+    if (!p) return "";
+    const regs = [["real", "Real", "#ff8a7a"], ["symbolic", "Symbolic", "#8fb8ff"], ["imaginary", "Imaginary", "#e7a6ff"]];
+    const symptom = p.symptom ? `<div class="row"><span>symptom</span><span>drawn back to ${nodeLink(p.symptom.node)}: ${esc(p.symptom.cause)}</span></div>` : "";
+    return `<h3>Psyche${p.unknotted ? ` · <span style="color:var(--warn)">knot loosened (${esc(p.unknotted)})</span>` : ""}</h3>
+      <div class="row"><span>lack</span><span>${p.lack}${p.jouissance >= 5 ? ` · jouissance ${p.jouissance}` : ""}</span></div>
+      <div class="bar"><i style="width:${p.lack}%;background:var(--accent)"></i></div>
+      <div class="registers">${regs.map(([k, label, col]) => `<span class="${p.unknotted === k ? "loose" : ""}">${label}</span><div class="bar"><i style="width:${Math.round(100 * (p.registers?.[k] || 0))}%;background:${col}"></i></div><span>${Math.round(100 * (p.registers?.[k] || 0))}%</span>`).join("")}</div>
+      <div class="row" style="margin-top:6px"><span>cause of desire</span><span class="chip" title="objet petit a: never desired directly; too much of it brings anxiety"><span class="dot" style="background:${resColor(p.objet_a)}"></span>${esc(pretty(p.objet_a))} (objet a)</span></div>
+      ${p.identification ? `<div class="row"><span>mirrors</span><span>${beingLink(p.identification)}</span></div>` : ""}
+      ${symptom}
+      ${(p.chain || []).some((r) => r !== b.desire) ? `<div class="row"><span>chain</span><span class="chain">${[b.desire, ...new Set(p.chain.filter((r) => r !== b.desire))].map((r, i) => `${i ? "←" : ""}<span class="chip"><span class="dot" style="background:${resColor(r)}"></span>${esc(pretty(r))}</span>`).join("")}</span></div>` : ""}`;
+  }
+
   function beingCard(b) {
     if (!b) return "";
     const pct = Math.round(100 * b.ichor / (b.max_ichor || 200));
@@ -678,9 +716,11 @@
       <div class="bar"><i style="width:${pct}%;background:${ichorCol}"></i></div>
       <div class="row"><span>dwells at</span><span>${nodeLink(b.at_node)}</span></div>
       <div class="row"><span>longs for</span><span class="chip desire"><span class="dot" style="background:${resColor(b.desire)}"></span>${esc(pretty(b.desire))}</span></div>
+      ${b.psyche?.reason ? `<div class="reason">because ${esc(b.psyche.reason)}</div>` : ""}
       <div class="row"><span>knows</span><span>${b.known_nodes} places · visited ${b.visited_nodes}</span></div>
       <div class="row"><span>lineage</span><span>generation ${lin.generation ?? 0} · age ${lin.age ?? 0}/${lin.lifespan ?? "?"}</span></div>
       ${(lin.parents || []).length ? `<div class="row"><span>summoned by</span><span>${lin.parents.map(beingLink).join(" & ")}</span></div>` : ""}
+      ${psycheSection(b)}
       <h3>Carries</h3>
       <div class="chips">${res.length ? res.map(([r, n]) => `<span class="chip"><span class="dot" style="background:${resColor(r)}"></span>${n} ${esc(pretty(r))}</span>`).join("") : '<span class="empty">nothing</span>'}</div>
       <h3>Bonds</h3>

@@ -1,5 +1,9 @@
 defmodule Eldritch.Being.Actions.Consume do
-  @moduledoc "A hungry being consumes what it carries. Its desired resource nourishes most."
+  @moduledoc """
+  Need: a hungry being consumes what it carries. Its desired resource
+  nourishes most. A being consumed by lack ignores its hunger until it
+  is starving.
+  """
   @behaviour Eldritch.Being.Action
   import Eldritch.Being.Action
 
@@ -9,9 +13,15 @@ defmodule Eldritch.Being.Actions.Consume do
   @impl true
   def priority(), do: 10
 
+  # beyond the pleasure principle: when lack is overwhelming a being
+  # neglects its need to chase its desire, until it is truly starving
+  @overwhelming_lack 80
+  @starving 25
+
   @impl true
   def preconditions_satisfied?(ctx) do
-    ichor(ctx) < @hunger and map_size(resources(ctx)) > 0
+    ichor(ctx) < @hunger and map_size(resources(ctx)) > 0 and
+      (ichor(ctx) < @starving or lack(ctx) < @overwhelming_lack)
   end
 
   @impl true

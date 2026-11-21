@@ -25,6 +25,7 @@ defmodule Eldritch.Being.Builder do
     * `"incantation"` - `%{"front" => ..., "back" => ...}`
     * `"lineage"`     - `%{"generation" => n, "parents" => [ids]}`
     * `"bonds"`       - `%{being_id => affinity}`
+    * `"psyche"`      - options for `Eldritch.Lacan.new/1` (e.g. `"objet_a"`, `"chain"`)
 
   returns the entity id of the newly created being
   """
@@ -48,10 +49,17 @@ defmodule Eldritch.Being.Builder do
     observations(entity_server)
     incantation(entity_server, Map.get(attributes, "incantation"))
 
-    volition(
-      entity_server,
-      Map.get_lazy(attributes, "desire", &Eldritch.Node.Resource.get_random_resource_type/0)
-    )
+    # desire is never directly for the objet a, the cause of desire
+    psyche = Eldritch.Lacan.new(Map.get(attributes, "psyche", %{}))
+    desire = Map.get_lazy(attributes, "desire", fn -> Eldritch.Lacan.initial_desire(psyche["objet_a"]) end)
+
+    psyche =
+      if desire == psyche["objet_a"],
+        do: Eldritch.Lacan.new(Map.put(Map.get(attributes, "psyche", %{}), "objet_a", Eldritch.Lacan.initial_desire(desire))),
+        else: psyche
+
+    volition(entity_server, desire)
+    psyche(entity_server, psyche)
 
     bonds(entity_server, Map.get(attributes, "bonds", %{}))
     lineage(
@@ -88,6 +96,18 @@ defmodule Eldritch.Being.Builder do
       do: volition(entity_server, Eldritch.Node.Resource.get_random_resource_type())
 
     unless has?.("bonds"), do: bonds(entity_server, %{})
+
+    unless has?.("psyche") do
+      desire = get_in(Cosmos.Entity.component(entity, "volition") || %{}, [Access.key(:value), "desire"])
+      psyche = Eldritch.Lacan.new()
+
+      psyche =
+        if psyche["objet_a"] == desire,
+          do: Eldritch.Lacan.new(%{"objet_a" => Eldritch.Lacan.initial_desire(desire)}),
+          else: psyche
+
+      psyche(entity_server, psyche)
+    end
 
     unless has?.("lineage"),
       do:
@@ -193,6 +213,16 @@ defmodule Eldritch.Being.Builder do
         "intent" => "awaken",
         "thought" => "..."
       })
+    )
+  end
+
+  @doc """
+  The being's psyche (see `Eldritch.Lacan`)
+  """
+  def psyche(entity_server, psyche) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("psyche", :attribute, psyche)
     )
   end
 

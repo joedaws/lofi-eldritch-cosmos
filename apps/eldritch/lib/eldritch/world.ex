@@ -23,7 +23,9 @@ defmodule Eldritch.World do
       "nodes" => nodes |> Map.values() |> Enum.map(&node_view/1),
       "beings" => Enum.map(beings, &being_view/1),
       "events" => Eldritch.Chronicle.since(since, 100),
-      "resources" => Eldritch.Node.Resource.get_resource_types()
+      "resources" => Eldritch.Node.Resource.get_resource_types(),
+      # what the cosmos as a whole desires (see Eldritch.Lacan.big_other/1)
+      "big_other" => Eldritch.Lacan.stored_big_other()
     }
   end
 
@@ -38,6 +40,22 @@ defmodule Eldritch.World do
       "position" => n["position"],
       "neighbors" => n |> Map.get("neighbors", MapSet.new()) |> Enum.to_list(),
       "occupants" => n |> Map.get("occupants", MapSet.new()) |> Enum.to_list()
+    }
+  end
+
+  def psyche_view(psyche) do
+    p = Eldritch.Lacan.normalize(psyche)
+
+    %{
+      "objet_a" => p["objet_a"],
+      "chain" => p["chain"],
+      "lack" => round(p["lack"]),
+      "jouissance" => round(p["jouissance"]),
+      "registers" => Map.new(p["registers"], fn {k, v} -> {k, Float.round(v * 1.0, 3)} end),
+      "unknotted" => Eldritch.Lacan.unknotted(p),
+      "identification" => p["identification"],
+      "symptom" => p["symptom"],
+      "reason" => p["reason"]
     }
   end
 
@@ -60,6 +78,7 @@ defmodule Eldritch.World do
       "known_nodes" => map_size(get_in(b, ["observations", "nodes"]) || %{}),
       "visited_nodes" => map_size(get_in(b, ["observations", "visited"]) || %{}),
       "lineage" => b["lineage"] || %{"generation" => 0, "parents" => []},
+      "psyche" => psyche_view(b["psyche"]),
       "incantation" => %{
         "front" => incantation["front"],
         # the answer is only revealed through recall

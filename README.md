@@ -75,6 +75,36 @@ Every being is an entity whose components subscribe it to systems
 | `Communion` | beings sharing a place meet, share what they know of the landscape, gift what the other desires, quarrel over dwindling resources they both want, share ichor with fading friends, and — when deeply bonded and vigorous — **summon** a new being (up to `max_population`) |
 | `Remind` | spaced repetition (Leitner boxes, 20s → 1d): when an incantation comes due the being whispers it |
 
+### Computational Lacanian dynamics
+
+Every being has a **psyche** (`Eldritch.Lacan`) that shapes its decisions:
+
+- **Need, demand, desire.** Need (hunger) is answered by eating. Demand is addressed to
+  another being: a lacking being *demands* what it desires of one who holds it. A gift answers
+  the demand (it strengthens the bond and the Symbolic) but barely touches desire. Desire is what
+  remains: it is never satisfied.
+- **Objet petit a.** Each being has a hidden cause of desire, a resource it never desires directly.
+  Holding too much of it produces **anxiety** (the lack of lack): the being casts it away.
+- **Lack and metonymy.** Lack grows over time and eases while a being gathers its object. When the
+  object is attained the being devours its hoard (jouissance), lack drops, and desire *slides* to a
+  new object, pushing the old one onto its **signifying chain**.
+- **Desire is the desire of the Other.** The next object is chosen by weighing what the whole cosmos
+  desires and exchanges (**the big Other**, Symbolic), what the being it identifies with desires
+  (**the semblable**, Imaginary), old signifiers returning from its chain (repetition, Real) and what
+  lies beside it (contiguity). Fads emerge as desire spreads.
+- **The registers.** Each psyche weights the Real, Symbolic and Imaginary. Gifts strengthen the
+  Symbolic; mirroring, refusal and rivalry the Imaginary; loss and starvation the Real. When one
+  dominates, the **knot loosens**: an Imaginary being refuses every demand and quarrels harder, a
+  Real one is ruled by repetition. The registers drift back toward balance and the knot reties.
+- **Identification.** A being leaning toward the Imaginary may see itself in a stronger being it
+  meets, and starts to desire what it desires, and to rival it.
+- **Trauma and repetition.** When a bonded being fades, its mourners gain a **symptom**: they are
+  drawn back to the place of loss (more strongly the more the Real weighs) until they work it through.
+- **Beyond the pleasure principle.** A being overwhelmed by lack neglects its hunger to chase its
+  desire, until it is truly starving.
+- **The paternal chain.** A summoned child's chain begins with its parents' desires; its cause of
+  desire is its own.
+
 Noteworthy happenings are written to the **chronicle** (`Eldritch.Chronicle`) shown in the side panel.
 
 ## Persistence
@@ -113,7 +143,7 @@ Rough capacity (4 cores, 1s tick): ~2,000 beings. Births stop at `config :eldrit
 
 ## Release Gamigin 
 
-- [ ] Computational Lacanian dynamics (desire sliding from object to object is a start)
+- [x] Computational Lacanian dynamics
 - [x] Start up script making a being and node
 - [x] Script to destory the cosmos so that one can start over
 - [x] Start up script making the landscape

@@ -11,6 +11,8 @@ defmodule Eldritch.Being.Action do
     * `:id`, `:pid`, `:being` - the being's id, server and component values
     * `:graph` - `%{node_id => node_values}` of the whole landscape
     * `:kin_at` - `%{node_id => [being_values]}` of living beings per node
+    * `:beings_by_id` - `%{being_id => being_values}` of every being
+    * `:other` - the desire of the big Other (see `Eldritch.Lacan.big_other/1`)
   """
 
   @type context :: map()
@@ -21,6 +23,9 @@ defmodule Eldritch.Being.Action do
   @callback perform(context) :: {String.t(), String.t()}
 
   # helpers shared by actions
+
+  def psyche(ctx), do: Eldritch.Lacan.normalize(ctx.being["psyche"])
+  def lack(ctx), do: psyche(ctx)["lack"]
 
   def resources(ctx), do: get_in(ctx.being, ["inventory", "resources"]) || %{}
   def desire(ctx), do: get_in(ctx.being, ["volition", "desire"])

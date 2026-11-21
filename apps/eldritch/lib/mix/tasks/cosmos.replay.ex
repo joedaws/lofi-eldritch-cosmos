@@ -114,7 +114,7 @@ defmodule Mix.Tasks.Cosmos.Replay do
         "max_ichor" => Eldritch.Being.max_ichor(),
         "max_population" => System.Communion.max_population(),
         "frame_format" =>
-          "b: [being, ichor, node, faded, intent*, thought*, desire*, [res*, n, ...], bonds [being, affinity, ...] or null (unchanged), known, visited, age, box, awaiting, streak]; * = index into strings"
+          "b: [being, ichor, node, faded, intent*, thought*, desire*, [res*, n, ...], bonds [being, affinity, ...] or null (unchanged), known, visited, age, box, awaiting, streak, lack, jouissance, real‰, symbolic‰, imaginary‰, knot* or -1, identification being or -1, symptom node or -1, symptom cause* or -1, reason*, [chain*], objet a*]; o: big Other [resource*, weight×100, ...]; * = index into strings"
       },
       "nodes" => nodes,
       "beings" => Enum.reverse(acc.beings),
@@ -225,6 +225,21 @@ defmodule Mix.Tasks.Cosmos.Replay do
           end
 
         incantation = Eldritch.Being.Incantation.normalize(b["incantation"] || %{})
+        psyche = Eldritch.Lacan.normalize(b["psyche"])
+        regs = psyche["registers"]
+        {acc, knot} = intern_or_none(acc, psyche["knot"])
+        {acc, ident} = if psyche["identification"], do: being_index_id(acc, psyche["identification"]), else: {acc, -1}
+        symptom = psyche["symptom"]
+        symptom_node = if symptom, do: Map.get(node_index, symptom["node"], -1), else: -1
+        {acc, cause} = intern_or_none(acc, symptom && symptom["cause"])
+        {acc, reason} = intern(acc, psyche["reason"] || "")
+        {acc, objet_a} = intern(acc, psyche["objet_a"])
+
+        {acc, chain} =
+          Enum.reduce(psyche["chain"], {acc, []}, fn r, {acc, flat} ->
+            {acc, ri} = intern(acc, r)
+            {acc, flat ++ [ri]}
+          end)
 
         row = [
           bi,
@@ -241,13 +256,39 @@ defmodule Mix.Tasks.Cosmos.Replay do
           get_in(b, ["lineage", "age"]) || 0,
           incantation["box"],
           if(incantation["awaiting"], do: 1, else: 0),
-          incantation["streak"]
+          incantation["streak"],
+          round(psyche["lack"]),
+          round(psyche["jouissance"]),
+          round(1000 * regs["real"]),
+          round(1000 * regs["symbolic"]),
+          round(1000 * regs["imaginary"]),
+          knot,
+          ident,
+          symptom_node,
+          cause,
+          reason,
+          chain,
+          objet_a
         ]
 
         {acc, [row | rows]}
       end)
 
-    frame = %{"t" => tick, "now" => Eldritch.Clock.now_ms(), "r" => reserves, "b" => Enum.reverse(rows)}
+    {acc, other} =
+      Eldritch.Lacan.stored_big_other()
+      |> Enum.reduce({acc, []}, fn {r, v}, {acc, flat} ->
+        {acc, ri} = intern(acc, r)
+        {acc, flat ++ [ri, round(v * 100)]}
+      end)
+
+    frame = %{
+      "t" => tick,
+      "now" => Eldritch.Clock.now_ms(),
+      "r" => reserves,
+      "o" => other,
+      "b" => Enum.reverse(rows)
+    }
+
     %{acc | frames: [frame | acc.frames]}
   end
 
@@ -287,6 +328,9 @@ defmodule Mix.Tasks.Cosmos.Replay do
         end
     end
   end
+
+  defp intern_or_none(acc, nil), do: {acc, -1}
+  defp intern_or_none(acc, s), do: intern(acc, s)
 
   defp intern(acc, s) do
     case Map.fetch(acc.string_index, s) do

@@ -3,9 +3,17 @@ defmodule Eldritch.System.Communion do
   Beings that share a node commune. Through communion they learn
   (or fail to learn) cooperation:
 
-    * **meeting**   - beings share what they know of the landscape
-    * **gifting**   - a being gives what another desires but it does not
+    * **meeting**   - beings share what they know of the landscape; a being
+                      weighted toward the Imaginary may *identify* with a
+                      stronger other, its semblable, whose desire becomes
+                      contagious (`Eldritch.Lacan`)
+    * **demand**    - a lacking being demands what it desires of one who has
+                      it. The other gives (Symbolic: the gift binds them, and
+                      answers the demand for love, not desire) or refuses
+                      (when it desires the same, bears a grudge, or its knot
+                      has loosened toward the Imaginary)
     * **rivalry**   - beings desiring the same dwindling resource quarrel
+                      (Imaginary aggressivity toward the semblable)
     * **succor**    - a strong being shares ichor with a fading friend
     * **summoning** - two deeply bonded, vigorous beings summon a new being
 
@@ -14,6 +22,7 @@ defmodule Eldritch.System.Communion do
   require Logger
   alias Eldritch.{Chronicle, Entities}
   alias Eldritch.Being.Actions
+  alias Eldritch.Lacan
 
   @min_affinity -20
   @max_affinity 50
@@ -22,7 +31,7 @@ defmodule Eldritch.System.Communion do
   @gift_units 3
   @succor_ichor 15
   @summon_affinity 12
-  @summon_ichor 110
+  @summon_ichor 90
   @summon_cost 40
   @summon_chance 0.15
 
@@ -62,8 +71,8 @@ defmodule Eldritch.System.Communion do
     meet(a, b, node)
     meet(b, a, node)
     share_knowledge(a, b)
-    gift(a, b)
-    gift(b, a)
+    demand(a, b)
+    demand(b, a)
     rivalry(a, b, node)
     succor(a, b)
     succor(b, a)
@@ -82,6 +91,26 @@ defmodule Eldritch.System.Communion do
     end
 
     bond(a, b, 1)
+    identify(a, b, node)
+  end
+
+  # the mirror: a being leaning toward the Imaginary sees itself in a stronger other
+  defp identify(a, b, node) do
+    psyche = Lacan.normalize(a["psyche"])
+    i = Lacan.weight(psyche, "imaginary")
+
+    if psyche["identification"] != b["id"] and (b["ichor"] || 0) > (a["ichor"] || 0) and
+         :rand.uniform() < (i - 0.25) * 0.5 do
+      Lacan.update(a["pid"], fn p ->
+        %{p | "identification" => b["id"]} |> Lacan.strengthen("imaginary", 0.03)
+      end)
+
+      Chronicle.record(
+        :identify,
+        "#{a["name"]} sees itself in #{b["name"]}.",
+        %{"beings" => [a["id"], b["id"]], "node" => node["id"]}
+      )
+    end
   end
 
   defp share_knowledge(a, b) do
@@ -99,25 +128,46 @@ defmodule Eldritch.System.Communion do
     end)
   end
 
-  # giver gives receiver the thing receiver desires, if giver does not want it itself
-  defp gift(giver, receiver) do
-    want = get_in(receiver, ["volition", "desire"])
-    giver_desire = get_in(giver, ["volition", "desire"])
-    have = get_in(giver, ["inventory", "resources", want]) || 0
+  # the asker demands what it desires of the holder, who gives or refuses
+  defp demand(asker, holder) do
+    want = get_in(asker, ["volition", "desire"])
+    have = get_in(holder, ["inventory", "resources", want]) || 0
+    asker_psyche = Lacan.normalize(asker["psyche"])
+    holder_psyche = Lacan.normalize(holder["psyche"])
 
-    if want != giver_desire and have > 0 and Map.get(bonds(giver), receiver["id"], 0) >= 0 do
-      given = Actions.take_resource(giver["pid"], want, @gift_units)
+    if have > 0 and asker_psyche["lack"] > 20 and :rand.uniform() < 0.5 do
+      refuse? =
+        get_in(holder, ["volition", "desire"]) == want or
+          Map.get(bonds(holder), asker["id"], 0) < 0 or
+          Lacan.unknotted(holder_psyche) == "imaginary"
+
+      given = if refuse?, do: 0, else: Actions.take_resource(holder["pid"], want, @gift_units)
 
       if given > 0 do
-        Actions.give_resource(receiver["pid"], want, given)
-        bond(receiver, giver, 3)
-        bond(giver, receiver, 1)
+        Actions.give_resource(asker["pid"], want, given)
+        Lacan.record_gift(want, given)
+        Lacan.update(asker["pid"], &Lacan.demand_answered/1)
+        Lacan.update(holder["pid"], &Lacan.strengthen(&1, "symbolic", 0.02))
+        bond(asker, holder, 3)
+        bond(holder, asker, 1)
 
         Chronicle.record(
           :gift,
-          "#{giver["name"]} gifts #{given} #{pretty(want)} to #{receiver["name"]}.",
-          %{"beings" => [giver["id"], receiver["id"]], "node" => giver["at_node"]}
+          "#{asker["name"]} demands #{pretty(want)} of #{holder["name"]}, who gives #{given}. " <>
+            "It is love #{asker["name"]} receives, not #{pretty(want)}.",
+          %{"beings" => [holder["id"], asker["id"]], "node" => holder["at_node"]}
         )
+      else
+        Lacan.update(asker["pid"], &Lacan.demand_refused/1)
+        bond(asker, holder, -2)
+
+        if :rand.uniform() < 0.1 do
+          Chronicle.record(
+            :refusal,
+            "#{holder["name"]} refuses #{asker["name"]}'s demand for #{pretty(want)}.",
+            %{"beings" => [holder["id"], asker["id"]], "node" => holder["at_node"]}
+          )
+        end
       end
     end
   end
@@ -127,8 +177,12 @@ defmodule Eldritch.System.Communion do
 
     if desire == get_in(b, ["volition", "desire"]) and node["resource_type"] == desire and
          (get_in(node, ["reserve", "amount"]) || 0) < 15 do
-      bond(a, b, -2)
-      bond(b, a, -2)
+      # aggressivity toward the semblable grows with the Imaginary
+      for {x, y} <- [{a, b}, {b, a}] do
+        i = Lacan.weight(Lacan.normalize(x["psyche"]), "imaginary")
+        bond(x, y, -round(1 + 3 * i))
+        Lacan.update(x["pid"], &Lacan.strengthen(&1, "imaginary", 0.005))
+      end
 
       # quarrels are frequent; only the occasional one makes the chronicle
       if :rand.uniform() < 0.08 do
@@ -148,7 +202,9 @@ defmodule Eldritch.System.Communion do
       Actions.change_ichor(receiver["pid"], @succor_ichor)
       bond(receiver, giver, 5)
 
-      Chronicle.record(
+      if :rand.uniform() < 0.25,
+        do:
+          Chronicle.record(
         :succor,
         "#{giver["name"]} shares its ichor with the fading #{receiver["name"]}.",
         %{"beings" => [giver["id"], receiver["id"]], "node" => giver["at_node"]}
@@ -164,7 +220,7 @@ defmodule Eldritch.System.Communion do
     vigorous = (a["ichor"] || 0) >= @summon_ichor and (b["ichor"] || 0) >= @summon_ichor
 
     if devoted and vigorous and population < max_population() and
-         :rand.uniform() < @summon_chance do
+         :rand.uniform() < summon_chance(population) do
       Actions.change_ichor(a["pid"], -@summon_cost)
       Actions.change_ichor(b["pid"], -@summon_cost)
 
@@ -180,7 +236,14 @@ defmodule Eldritch.System.Communion do
             Enum.random([get_in(a, ["volition", "desire"]), get_in(b, ["volition", "desire"])]),
           "incantation" => Eldritch.KnowledgePack.random_incantation(),
           "lineage" => %{"generation" => generation, "parents" => [a["id"], b["id"]]},
-          "bonds" => %{a["id"] => 15, b["id"] => 15}
+          "bonds" => %{a["id"] => 15, b["id"] => 15},
+          # the child enters a chain of signifiers already begun by its parents;
+          # its cause of desire is its own
+          "psyche" => %{
+            "chain" => [get_in(a, ["volition", "desire"]), get_in(b, ["volition", "desire"])],
+            "identification" => Enum.random([a["id"], b["id"]]),
+            "reason" => "my parents desired it"
+          }
         })
 
       bond_id(a, child_id, 15)
@@ -197,6 +260,12 @@ defmodule Eldritch.System.Communion do
     else
       population
     end
+  end
+
+  # a dwindling cosmos summons more eagerly (up to 4x below half the population cap)
+  defp summon_chance(population) do
+    target = max(1, div(max_population(), 2))
+    @summon_chance * (1 + 3 * max(0, 1 - population / target))
   end
 
   defp bonds(being), do: being["bonds"] || %{}
