@@ -194,6 +194,30 @@ optionally `PORT` and `DATABASE_PATH`, and a mail provider for login links (conf
 - [x] Beings that act, cooperate, compete, reproduce and fade
 - [x] Spaced repetition of incantations
 - [x] Visualization
+- [x] Accounts: each person owns one being with a deck of incantations and a temperament
+
+## Next: opening the cosmos to people
+
+- [ ] Push live changes to the page (Phoenix Channels) for the region in view, instead of polling
+- [ ] Store the chronicle so history survives restarts
+- [ ] A population that sustains itself (births tied to the health of the cosmos)
+- [ ] Ranks or roles, toward social organization
+- [ ] Deploy (one server, SQLite with backups) with a mail provider for login links
+
+## After launch
+
+- [ ] **Export your interactions to your own learning agent.** Let a person send what
+  happens between them and their being to an agent they run that helps them learn (for
+  example an AI tutor that sees which cards they keep missing and drills them).
+  - What to export: every answer to an incantation (card, answer given, right or wrong,
+    box before and after, time), card edits, temperament changes, beckons, and chronicle
+    events about their being (fading, revival, gifts, mourning).
+  - Prerequisite: keep a per-person history of these interactions. Today the deck only keeps
+    counters (box, streak, recalls), not each answer.
+  - Ways to hand it over, simplest first: a JSON Lines download; a personal, revocable
+    API token for a read-only feed the agent polls; webhooks pushed to the agent; an MCP
+    server so agents can ask questions like "which cards did I miss this week?"
+  - Only the owner can export their own history, and tokens can be revoked at any time.
 
 # Starting the Cosmos ECS application
 
