@@ -92,6 +92,11 @@
   .form-grid { display: grid; gap: 6px; margin-top: 8px; }
   .form-grid label { font-size: 12px; color: var(--muted); text-align: left; }
   .error { color: var(--danger); font-size: 12px; margin-top: 6px; }
+  .scrub { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--muted); font-size: 12px; }
+  .scrub input { flex: 1; }
+  .scrub span { font-family: var(--mono); min-width: 92px; text-align: right; }
+  .notice { border-color: var(--accent); }
+  .notice a { color: var(--accent-2); }
   .tabs { display: flex; gap: 4px; margin-top: 14px; }
   .tabs button { flex: 1; font-size: 12px; padding: 5px; }
   .tabs button.on { border-color: var(--accent); color: var(--accent); }
@@ -181,6 +186,11 @@
     seedDismissed: false,
   };
 
+  // A static build (GitHub Pages) sets <html data-replay="replay.json"> and plays a recording
+  const REPLAY_URL = document.documentElement.dataset.replay;
+  const replay = REPLAY_URL ? { data: null, frame: 0, playing: true, fps: 4, eventTicks: [] } : null;
+  const REPO_URL = "https://github.com/joedaws/lofi-eldritch-cosmos";
+
   window.cosmos = state; // handy for poking at the cosmos from the console
   const $ = (id) => document.getElementById(id);
   const canvas = $("cosmos");
@@ -203,6 +213,7 @@
 
   let polling = false;
   async function poll() {
+    if (replay) { if (replay.data) ingest(replayWorld(replay.frame)); return; }
     if (polling) return;
     polling = true;
     try {
@@ -219,7 +230,9 @@
     state.world = world;
     state.nodes = new Map(world.nodes.map((n) => [n.id, n]));
     state.beings = new Map(world.beings.map((b) => [b.id, b]));
-    if (world.events.length) {
+    if (world.replaceEvents) {
+      state.events = world.events;
+    } else if (world.events.length) {
       state.lastSeq = world.events[0].seq;
       state.events = world.events.concat(state.events).slice(0, 250);
     }
@@ -228,7 +241,79 @@
     layoutNodes();
     renderPanel();
     const empty = world.nodes.length === 0;
-    $("genesis").style.display = (empty && !state.seedDismissed) || state.forceGenesis ? "grid" : "none";
+    $("genesis").style.display = !replay && ((empty && !state.seedDismissed) || state.forceGenesis) ? "grid" : "none";
+  }
+
+  // ---------- replay ----------
+  async function loadReplay() {
+    try {
+      const res = await fetch(REPLAY_URL);
+      const R = await res.json();
+      // bonds are only stored every few frames: carry the last known bonds forward
+      const last = new Map();
+      for (const f of R.frames) for (const row of f.b) {
+        if (row[8] !== null) {
+          const bonds = {};
+          for (let i = 0; i < row[8].length; i += 2) { const other = R.beings[row[8][i]]; if (other) bonds[other.id] = row[8][i + 1]; }
+          last.set(row[0], bonds);
+        }
+        row.bonds = last.get(row[0]) || {};
+      }
+      R.events.sort((a, b) => a.seq - b.seq);
+      replay.eventTicks = R.events.map((e) => e.tick);
+      replay.data = R;
+      setupReplayControls();
+      ingest(replayWorld(0));
+    } catch (e) {
+      banner("Could not load the recording.", 0);
+    }
+  }
+
+  function replayWorld(i) {
+    const R = replay.data, f = R.frames[i], S = R.strings;
+    const nodes = R.nodes.map((n, j) => ({
+      id: n.id, name: n.name, resource_type: n.resource_type, resource_yield: n.resource_yield,
+      max_reserve: n.max_reserve, position: n.position, reserve: f.r[j],
+      neighbors: n.neighbors.map((k) => R.nodes[k].id), occupants: [],
+    }));
+    let population = 0;
+    const beings = f.b.map((row) => {
+      const info = R.beings[row[0]];
+      const node = row[2] >= 0 ? nodes[row[2]] : null;
+      const faded = row[3] === 1;
+      if (!faded) { population++; if (node) node.occupants.push(info.id); }
+      const resources = {};
+      for (let k = 0; k < row[7].length; k += 2) resources[S[row[7][k]]] = row[7][k + 1];
+      return {
+        id: info.id, name: info.name, status: faded ? "faded" : "alive", ichor: row[1], max_ichor: R.meta.max_ichor,
+        at_node: node ? node.id : null, resources, desire: S[row[6]], intent: S[row[4]], thought: S[row[5]],
+        bonds: row.bonds, known_nodes: row[9], visited_nodes: row[10],
+        lineage: { generation: info.generation, parents: info.parents, age: row[11], lifespan: info.lifespan },
+        incantation: { front: info.front, has_back: info.has_back, box: row[12], awaiting: row[13] === 1, streak: row[14], due_at: null },
+      };
+    });
+    // events up to this tick, most recent first
+    let hi = 0; while (hi < replay.eventTicks.length && replay.eventTicks[hi] <= f.t) hi++;
+    const events = R.events.slice(Math.max(0, hi - 250), hi).reverse();
+    return {
+      nodes, beings, events, replaceEvents: true, resources: R.meta.resources,
+      simulation: { running: replay.playing, tick: f.t, tick_ms: Math.round(1000 / replay.fps), population, faded: beings.length - population, now: f.now },
+    };
+  }
+
+  function setupReplayControls() {
+    const R = replay.data;
+    $("new-cosmos").style.display = "none";
+    $("toggle").title = "Play / pause the recording";
+    const speed = $("speed");
+    speed.min = 1; speed.max = 20; speed.step = 1; speed.value = replay.fps;
+    speed.setAttribute("aria-label", "Playback speed");
+    const scrub = document.createElement("div");
+    scrub.className = "scrub";
+    scrub.innerHTML = `<span style="min-width:0;text-align:left">time</span><input type="range" id="scrub" min="0" max="${R.frames.length - 1}" value="0" aria-label="Replay position"><span id="scrub-label"></span>`;
+    document.querySelector(".speed").after(scrub);
+    $("scrub").addEventListener("input", (e) => { replay.frame = Number(e.target.value); poll(); });
+    document.querySelector(".hint").textContent = "recorded replay · drag to pan · scroll to zoom · click a being or a place";
   }
 
   // ---------- layout ----------
@@ -527,7 +612,7 @@
   function beingLink(id) { return `<a class="link" data-being="${esc(id)}">${esc(nameOf(id))}</a>`; }
   function nodeLink(id) { const n = state.nodes.get(id); return n ? `<a class="link" data-node="${esc(id)}">${esc(n.name)}</a>` : "nowhere"; }
   function fmtDue(ms) {
-    const s = Math.max(0, Math.round((ms - Date.now()) / 1000));
+    const s = Math.max(0, Math.round((ms - (state.world?.simulation?.now ?? Date.now())) / 1000));
     if (s < 60) return `${s}s`; if (s < 3600) return `${Math.round(s / 60)}m`; if (s < 86400) return `${Math.round(s / 3600)}h`; return `${Math.round(s / 86400)}d`;
   }
 
@@ -537,11 +622,19 @@
     $("s-pop").textContent = `${sim.population ?? 0}`;
     $("s-faded").textContent = sim.faded ?? 0;
     $("s-nodes").textContent = state.nodes.size;
-    $("toggle").textContent = sim.running ? "❚❚ Slumber" : "▶ Stir";
+    $("toggle").textContent = replay ? (replay.playing ? "❚❚ Pause" : "▶ Play") : sim.running ? "❚❚ Slumber" : "▶ Stir";
     $("toggle").classList.toggle("primary", !sim.running);
     const speed = $("speed");
-    if (document.activeElement !== speed && sim.tick_ms) speed.value = 3100 - sim.tick_ms;
-    $("speed-label").textContent = `${sim.tick_ms ?? "?"}ms/tick`;
+    if (replay) {
+      $("speed-label").textContent = `${replay.fps} frames/s`;
+      if (replay.data) {
+        if (document.activeElement !== $("scrub")) $("scrub").value = replay.frame;
+        $("scrub-label").textContent = `tick ${sim.tick} / ${replay.data.meta.ticks}`;
+      }
+    } else {
+      if (document.activeElement !== speed && sim.tick_ms) speed.value = 3100 - sim.tick_ms;
+      $("speed-label").textContent = `${sim.tick_ms ?? "?"}ms/tick`;
+    }
     $("bonds-toggle").classList.toggle("primary", state.showBonds);
     setHTML($("legend"), `<div class="chips">${(state.world?.resources || []).map((r) => `<span class="chip"><span class="dot" style="background:${resColor(r)}"></span>${esc(pretty(r))}</span>`).join("")}</div>`);
   }
@@ -559,7 +652,8 @@
     const active = document.activeElement;
     if (!force && active && sel.contains(active) && active.tagName === "INPUT") { renderTab(); return; }
     if (!state.selected) {
-      setHTML(sel, `<div class="card"><div class="thought">Beings roam a landscape of haunted places, gathering what they desire, meeting, gifting, quarrelling and summoning new beings. Each holds an incantation; answer it when it is whispered to strengthen the being — even to call it back from the void.</div><div class="empty">Select a being or a place.</div></div>`);
+      const notice = replay ? `<div class="card notice"><b>This is a recording.</b> ${replay.data ? replay.data.meta.ticks : ""} ticks of a cosmos simulated offline, with a pretend player answering some incantations. Scrub through time, pause, and click beings and places to inspect them. To answer incantations, beckon beings and summon your own, <a href="${REPO_URL}" target="_blank" rel="noopener">run the cosmos locally</a>.</div>` : "";
+      setHTML(sel, notice + `<div class="card"><div class="thought">Beings roam a landscape of haunted places, gathering what they desire, meeting, gifting, quarrelling and summoning new beings. Each holds an incantation; answer it when it is whispered to strengthen the being — even to call it back from the void.</div><div class="empty">Select a being or a place.</div></div>`);
     } else if (state.selected.kind === "being") {
       setHTML(sel, beingCard(state.beings.get(state.selected.id)));
     } else {
@@ -593,11 +687,13 @@
       <div class="chips">${bonds.length ? bonds.slice(0, 12).map(([id, a]) => `<span class="chip" style="border-color:${a >= 0 ? "#7ef0c855" : "#ff6b7a66"}">${beingLink(id)} ${a > 0 ? "+" : ""}${a}</span>`).join("") : '<span class="empty">a stranger to all</span>'}</div>
       <h3>Incantation · box ${inc.box ?? 1}${inc.streak ? ` · streak ${inc.streak}` : ""}</h3>
       <div class="incantation ${inc.awaiting ? "awaiting" : ""}">${esc(inc.front || "—")}</div>
-      ${inc.awaiting
+      ${replay
+        ? `<div class="feedback" style="color:var(--muted)">${inc.awaiting ? "It is whispering, waiting for an answer." : "It will whisper again in time."}</div>`
+        : inc.awaiting
         ? `<form class="recall" data-recall="${esc(b.id)}"><input type="text" name="answer" placeholder="${inc.has_back ? "Speak the answer…" : "Acknowledge it (any word)"}" autocomplete="off"><button class="primary">Answer</button></form>`
         : `<div class="feedback" style="color:var(--muted)">It will whisper again in ${fmtDue(inc.due_at)}.</div>`}
       ${fb}
-      <div class="controls" style="margin-top:12px">
+      <div class="controls" style="margin-top:12px;${replay ? "display:none" : ""}">
         <button data-beckon="${esc(b.id)}" ${b.status === "faded" ? "disabled" : ""}>Beckon…</button>
         <button data-edit="${esc(b.id)}">Rebind incantation</button>
       </div>
@@ -624,13 +720,13 @@
       ${remains.length ? `<h3>Remains of the faded</h3><div class="chips">${remains.map((b) => `<span class="chip">${beingLink(b.id)}</span>`).join("")}</div>` : ""}
       <h3>Paths lead to</h3>
       <div class="chips">${n.neighbors.map((id) => `<span class="chip">${nodeLink(id)}</span>`).join("")}</div>
-      <h3>Summon a being here</h3>
+      ${replay ? "" : `<h3>Summon a being here</h3>
       <form class="form-grid" data-summon="${esc(n.id)}">
         <input type="text" name="name" placeholder="Name (optional)">
         <input type="text" name="front" placeholder="Incantation front, e.g. 'capital of Peru'">
         <input type="text" name="back" placeholder="Incantation back, e.g. 'Lima'">
         <button class="primary">Summon</button>
-      </form>
+      </form>`}
     </div>`;
   }
 
@@ -705,11 +801,13 @@
 
   // ---------- header controls ----------
   $("toggle").addEventListener("click", async () => {
+    if (replay) { replay.playing = !replay.playing; if (replay.playing && replay.data && replay.frame >= replay.data.frames.length - 1) replay.frame = 0; poll(); schedule(); return; }
     const running = state.world?.simulation?.running;
     await api(running ? "/simulation/stop" : "/simulation/start", {});
     poll();
   });
   $("speed").addEventListener("change", async (e) => {
+    if (replay) { replay.fps = Number(e.target.value); renderStats(); schedule(); return; }
     await api("/simulation/speed", { tick_ms: 3100 - Number(e.target.value) });
     poll(); schedule();
   });
@@ -737,6 +835,16 @@
   let timer;
   function schedule() {
     clearTimeout(timer);
+    if (replay) {
+      timer = setTimeout(() => {
+        if (replay.data && replay.playing) {
+          if (replay.frame < replay.data.frames.length - 1) replay.frame++;
+          else { replay.frame = 0; state.selected = null; state.follow = null; }
+        }
+        poll(); schedule();
+      }, replay.frame === (replay.data?.frames.length ?? 0) - 1 ? 4000 : 1000 / replay.fps);
+      return;
+    }
     const tick = state.world?.simulation?.tick_ms || 1000;
     timer = setTimeout(async () => { await poll(); schedule(); }, Math.max(300, Math.min(1000, tick)));
   }
@@ -744,7 +852,7 @@
   setInterval(() => { if (state.selected && state.selected.kind === "being") renderPanel(); }, 1000);
 
   resize();
-  poll().then(schedule);
+  if (replay) loadReplay().then(schedule); else poll().then(schedule);
   requestAnimationFrame(draw);
 })();
 </script>

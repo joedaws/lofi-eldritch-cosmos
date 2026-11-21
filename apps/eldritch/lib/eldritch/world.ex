@@ -16,7 +16,9 @@ defmodule Eldritch.World do
         Map.merge(Eldritch.Simulation.status(), %{
           "population" => living,
           "faded" => length(beings) - living,
-          "max_population" => Eldritch.System.Communion.max_population()
+          "max_population" => Eldritch.System.Communion.max_population(),
+          # the clock incantation due times are measured against
+          "now" => Eldritch.Clock.now_ms()
         }),
       "nodes" => nodes |> Map.values() |> Enum.map(&node_view/1),
       "beings" => Enum.map(beings, &being_view/1),

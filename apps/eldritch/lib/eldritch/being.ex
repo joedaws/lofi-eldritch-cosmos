@@ -103,7 +103,7 @@ defmodule Eldritch.Being do
            "due_at" => new_incantation["due_at"]
          }}
       else
-        {:error, :not_awaiting, max(0, incantation["due_at"] - System.system_time(:millisecond))}
+        {:error, :not_awaiting, max(0, incantation["due_at"] - Eldritch.Clock.now_ms())}
       end
     end
   end

@@ -130,7 +130,8 @@ defmodule Eldritch.System.Communion do
       bond(a, b, -2)
       bond(b, a, -2)
 
-      if :rand.uniform() < 0.3 do
+      # quarrels are frequent; only the occasional one makes the chronicle
+      if :rand.uniform() < 0.08 do
         Chronicle.record(
           :rivalry,
           "#{a["name"]} and #{b["name"]} quarrel over the dwindling #{pretty(desire)}.",

@@ -91,5 +91,5 @@ defmodule Eldritch.Being.Incantation do
     |> Enum.join(" ")
   end
 
-  defp now(), do: System.system_time(:millisecond)
+  defp now(), do: Eldritch.Clock.now_ms()
 end

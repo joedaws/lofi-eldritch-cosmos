@@ -46,6 +46,20 @@ mix cosmos.destroy
 - **Bonds** draws the strong bonds between all beings (green: affinity, red: rivalry).
 - The speed slider sets the tick duration (100ms – 3s). **New cosmos** unmakes and reseeds.
 
+## Static demo (GitHub Pages)
+
+`docs/` holds a static, read-only replay of a recorded cosmos for GitHub Pages
+(Settings → Pages → Deploy from a branch → `/docs`). Rebuild it with
+
+```bash
+mix cosmos.replay            # --ticks 1600 --every 2 --beings 14 --rings 6,10,14 --seed 7
+```
+
+The recorder runs a fresh cosmos in its own data directory (your cosmos is untouched),
+steps every system tick by tick with a simulated player answering some incantations,
+and writes `docs/replay.json` plus the visualization in replay mode (`docs/index.html`).
+Re-run it whenever `apps/lofi/priv/static/index.html` changes so the demo picks up the change.
+
 ## How the cosmos works
 
 Every being is an entity whose components subscribe it to systems
