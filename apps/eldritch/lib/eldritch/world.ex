@@ -5,8 +5,16 @@ defmodule Eldritch.World do
   """
   alias Eldritch.Entities
 
+  @doc """
+  Options:
+    * `:since`  - only chronicle events after this sequence number
+    * `:viewer` - id of the person looking (nil when anonymous). Card fronts
+      show only to whoever may answer them: a being's owner, or anyone
+      signed in for the beings of the commons.
+  """
   def snapshot(opts \\ []) do
     since = Keyword.get(opts, :since, 0)
+    viewer = Keyword.get(opts, :viewer)
     nodes = Entities.node_map()
     beings = Entities.being_list()
     living = Enum.count(beings, &Entities.alive?/1)
@@ -21,7 +29,7 @@ defmodule Eldritch.World do
           "now" => Eldritch.Clock.now_ms()
         }),
       "nodes" => nodes |> Map.values() |> Enum.map(&node_view/1),
-      "beings" => Enum.map(beings, &being_view/1),
+      "beings" => Enum.map(beings, &being_view(&1, viewer)),
       "events" => Eldritch.Chronicle.since(since, 100),
       "resources" => Eldritch.Node.Resource.get_resource_types(),
       # what the cosmos as a whole desires (see Eldritch.Lacan.big_other/1)
@@ -47,7 +55,8 @@ defmodule Eldritch.World do
     p = Eldritch.Lacan.normalize(psyche)
 
     %{
-      "objet_a" => p["objet_a"],
+      # the cause of desire is hidden, even from the owner, until anxiety reveals it
+      "objet_a" => if(p["objet_a_revealed"], do: p["objet_a"], else: nil),
       "chain" => p["chain"],
       "lack" => round(p["lack"]),
       "jouissance" => round(p["jouissance"]),
@@ -59,8 +68,12 @@ defmodule Eldritch.World do
     }
   end
 
-  def being_view(b) do
-    incantation = Eldritch.Being.Incantation.normalize(b["incantation"] || %{})
+  def being_view(b, viewer \\ nil) do
+    deck = Eldritch.Being.Deck.normalize(b["deck"] || b["incantation"])
+    card = Eldritch.Being.Deck.current(deck) || %{}
+    owner = Eldritch.Being.owner(b)
+    signed_in = viewer != nil
+    can_answer = signed_in and Eldritch.Being.may_answer(b, viewer) == :ok
 
     %{
       "id" => b["id"],
@@ -79,14 +92,20 @@ defmodule Eldritch.World do
       "visited_nodes" => map_size(get_in(b, ["observations", "visited"]) || %{}),
       "lineage" => b["lineage"] || %{"generation" => 0, "parents" => []},
       "psyche" => psyche_view(b["psyche"]),
+      "temperament" => Eldritch.Being.Temperament.new(b["temperament"] || %{}),
+      "owner_id" => owner,
+      "mine" => signed_in and owner == viewer,
+      "can_answer" => can_answer,
+      "deck_size" => length(deck["cards"]),
+      "beckon_wait_ms" => if(signed_in and owner == viewer, do: Eldritch.Being.Owned.beckon_wait(b), else: nil),
       "incantation" => %{
-        "front" => incantation["front"],
-        # the answer is only revealed through recall
-        "has_back" => incantation["back"] != "",
-        "box" => incantation["box"],
-        "due_at" => incantation["due_at"],
-        "awaiting" => incantation["awaiting"],
-        "streak" => incantation["streak"]
+        # a card belongs to its owner: its words show only to whoever may answer it
+        "front" => if(can_answer or owner == nil, do: card["front"], else: nil),
+        "has_back" => (card["back"] || "") != "",
+        "box" => card["box"],
+        "due_at" => card["due_at"],
+        "awaiting" => card["awaiting"] || false,
+        "streak" => card["streak"]
       }
     }
   end

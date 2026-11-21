@@ -180,12 +180,12 @@ defmodule Eldritch.SimulationTest do
     assert {:error, :not_awaiting, _} = Eldritch.Being.recall(being, "56")
 
     make_due = fn ->
-      Cosmos.Entity.Server.update_component(pid, "incantation", fn comp ->
-        %{comp | value: %{comp.value | "due_at" => 0}}
+      Cosmos.Entity.Server.update_component(pid, "deck", fn comp ->
+        %{comp | value: %{"cards" => Enum.map(comp.value["cards"], &%{&1 | "due_at" => 0})}}
       end)
 
       Eldritch.System.Remind.update_components(Eldritch.System.Remind)
-      assert get_in(vals(being), ["incantation", "awaiting"])
+      assert Eldritch.Being.Deck.awaiting(vals(being)["deck"])
     end
 
     make_due.()
@@ -205,8 +205,8 @@ defmodule Eldritch.SimulationTest do
 
     pid = Cosmos.Entity.Cache.server_process(being)
 
-    Cosmos.Entity.Server.update_component(pid, "incantation", fn comp ->
-      %{comp | value: %{comp.value | "due_at" => 0}}
+    Cosmos.Entity.Server.update_component(pid, "deck", fn comp ->
+      %{comp | value: %{"cards" => Enum.map(comp.value["cards"], &%{&1 | "due_at" => 0})}}
     end)
 
     Eldritch.System.Remind.update_components(Eldritch.System.Remind)
@@ -223,7 +223,7 @@ defmodule Eldritch.SimulationTest do
     world = Eldritch.World.snapshot()
     assert length(world["nodes"]) == 9
     assert length(world["beings"]) == 4
-    assert is_binary(Poison.encode!(world))
+    assert is_binary(Jason.encode!(world))
   end
 
   test "the simulation runs every system and ticks" do

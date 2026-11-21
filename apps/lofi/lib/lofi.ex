@@ -1,18 +1,7 @@
 defmodule Lofi do
   @moduledoc """
-  Documentation for `Lofi`.
+  Lofi is the web face of the cosmos: accounts (`Lofi.Accounts`) and the
+  Phoenix web layer (`LofiWeb`). It talks to the simulation only through
+  the `Eldritch` application, never to `Cosmos` directly.
   """
-
-  @doc """
-  Hello world.
-
-  ## Examples
-
-      iex> Lofi.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end

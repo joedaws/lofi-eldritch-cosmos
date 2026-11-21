@@ -9,7 +9,7 @@ defmodule Cosmos.MixProject do
       config_path: "../../config/config.exs",
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
-      elixir: "~> 1.14",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -28,9 +28,7 @@ defmodule Cosmos.MixProject do
     [
       {:ksuid, "~> 0.1"},
       {:quantum, "~> 3.0"},
-      {:poison, "~> 5.0"},
-      # 0.36 is the last release supporting Elixir < 1.17 (.mise.toml pins 1.16)
-      {:exqlite, "~> 0.36.0"}
+      {:exqlite, "~> 0.43"}
     ]
   end
 end

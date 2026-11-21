@@ -8,8 +8,10 @@ Simulation of a cosmos of eldritch beings trying to learn cooperation and social
 - The `Eldritch` library application is used to construct and interact with specific
   kinds of entities such as `Being` or `Node` entity.
 
-- The `Lofi` application is a simple cowboy and plug based server for interacting with 
-  the simulation via http.
+- The `Lofi` application is a Phoenix app: accounts (generated with `mix phx.gen.auth`),
+  the JSON api and the visualization. It talks only to `Eldritch`.
+
+The toolchain is pinned in `.mise.toml` (Elixir 1.18, Erlang/OTP 27).
 
 # Running the simulation
 
@@ -19,9 +21,15 @@ mix cosmos.seed            # dream a landscape and awaken beings (asks before wi
 mix run --no-halt          # start the cosmos and the lofi server
 ```
 
-Then open **http://localhost:5454** and press **▶ Stir** (or start with
-`ELDRITCH_AUTOSTART=true mix run --no-halt`). If the cosmos is empty the
-page offers to seed one for you.
+Then open **http://localhost:5454**. Anyone can watch; to take part,
+**register** (top of the side panel). Registration asks for an email (to log in with)
+and a display name (shown to others in the cosmos). You then log in with a one-time
+link sent by email; in development no mail is sent and the link appears at
+**http://localhost:5454/dev/mailbox**. In **Settings** you can add a password.
+
+The **first account to register becomes the keeper** (admin): only the keeper sees
+**▶ Stir** / speed / **New cosmos**, and seeds an empty cosmos from the page. The simulation
+can also start on boot with `ELDRITCH_AUTOSTART=true mix run --no-halt`.
 
 `mix cosmos.seed` options: `--yes` (wipe without asking), `--keep` (seed on top of
 existing data), `--beings 12`, `--rings 6,10,14` (places on each ring of the landscape).
@@ -32,19 +40,42 @@ To clear the simulation use the destroy script (which will ask before destroying
 mix cosmos.destroy
 ```
 
+## Your being
+
+Each person may summon **one being** (the **My being** tab):
+
+- **Name** it (or take one from the grimoire) and choose where it awakens. Its cause of
+  desire (objet a) stays hidden, even from you, until the being shows anxiety about it.
+- Give it a **deck of incantations** (up to 30 flash cards). Each card climbs the Leitner
+  boxes on its own schedule; the being whispers one due card at a time. **Only you can
+  answer your being's whispers**, so your remembering is what keeps it alive, and what
+  calls it back if it fades. Others see that it whispers, never what.
+- Set its **temperament** (0–100, 50 is how the beings of the commons behave). Traits bias
+  its choices; it stays autonomous:
+  - *generosity*: how readily it gives when others demand (0 never, 50 gives 3, 100 gives 6)
+  - *wanderlust*: above 50 it sometimes leaves its desire's place to explore; below 50 it
+    sometimes stays put instead of wandering
+  - *sociability*: how strongly it seeks bonded beings next door
+  - *conformity*: whether its next desire follows the big Other or its own chain
+- **Beckon** it to a place, once an hour (`config :eldritch, :beckon_cooldown_ms`).
+
+Beings nobody owns (the seeded ones and their children) are **the commons**: anyone signed
+in may answer their whispers.
+
 ## The visualization
 
 - Places (nodes) glow in the colour of their resource; the filled core and the arc
   around them show how much of their reserve is left.
 - Beings orbit the place they dwell in. Their size is their ichor; their eye looks where
   they are going. Faded beings linger as grey husks where they fell.
-- A pulsing golden halo means a being is **whispering its incantation**: select it and
-  answer. A true answer feeds it ichor and can even call a faded being back from the void.
-- Click a being to follow it and see its thoughts, desire, inventory, bonds, lineage and
-  incantation. **Beckon…** then click a place to draw it there.
-- Click a place to see who is there and to **summon** a new being with your own incantation.
+- A pulsing golden halo means a being is **whispering an incantation**. If it is yours (or
+  of the commons), select it and answer. A true answer feeds it ichor and can even call a
+  faded being back from the void. Your own being wears a dashed gold frame.
+- Click a being to follow it and see its owner, thoughts, desire, psyche, inventory, bonds,
+  lineage and incantation. **Beckon…** then click a place to draw your being there.
+- Click a place to see who is there (the keeper can also summon beings of the commons).
 - **Bonds** draws the strong bonds between all beings (green: affinity, red: rivalry).
-- The speed slider sets the tick duration (100ms – 3s). **New cosmos** unmakes and reseeds.
+- The keeper's speed slider sets the tick duration (100ms – 3s). **New cosmos** unmakes and reseeds.
 
 ## Static demo (GitHub Pages)
 
@@ -109,6 +140,9 @@ Noteworthy happenings are written to the **chronicle** (`Eldritch.Chronicle`) sh
 
 ## Persistence
 
+Accounts live in their own SQLite database, `accounts.sqlite3`, next to the cosmos
+(migrations run automatically on start; `DATABASE_PATH` overrides its location).
+
 Entities are stored in SQLite at `$XDG_DATA_HOME/lofi-eldritch-cosmos/cosmos.sqlite3`
 (usually `~/.local/share/...`), one row per entity (`id`, `kind`, `data`, `updated_at`).
 `Cosmos.Database` batches writes: changes collect in memory and are committed in one
@@ -117,27 +151,37 @@ many times between flushes is written once. Reads see pending writes. A crash lo
 one flush interval. On shutdown, after seeding, and on `Cosmos.Database.sync/0`, everything is flushed.
 
 Data saved by the older one-file-per-entity store is imported automatically on start up;
-the original files are moved to `legacy-files-backup/` next to the database.
+the original files are moved to `legacy-files-backup/` next to the database (only files that
+decode as entities are touched). Beings saved with a single incantation get a deck holding it.
 
 Rough capacity (4 cores, 1s tick): ~2,000 beings. Births stop at `config :eldritch, :max_population`
 (default 40). Above a few hundred beings the browser's `/world` poll gets large (~0.8 KB per being).
 
 ## HTTP API
 
-| Method & path | Body | |
-| --- | --- | --- |
-| `GET /` | | the visualization |
-| `GET /world?since=SEQ` | | nodes, beings, simulation status and chronicle events after `SEQ` |
-| `GET /beings`, `GET /nodes` | | ids |
-| `GET /being?id=ID` | | full entity (404 for unknown ids) |
-| `POST /being` | optional `name`, `at_node`, `incantation: {front, back}` | create a being |
-| `POST /being/recall` | `id`, `answer` | answer a whispered incantation (409 if it isn't whispering) |
-| `POST /being/beckon` | `id`, `node_id` | move a being |
-| `POST /being/incantation` | `id`, `front`, `back` | rebind a being's incantation |
-| `GET /simulation`, `POST /simulation/start`, `POST /simulation/stop` | | |
-| `POST /simulation/speed` | `tick_ms` | |
-| `POST /cosmos/seed` | `beings`, `rings`, `reset` | seed a landscape |
-| `POST /cosmos/reset` | | unmake everything |
+Writes use the browser session and need the CSRF token from `GET /api/me`
+(sent as the `x-csrf-token` header).
+
+| Method & path | Who | Body | |
+| --- | --- | --- | --- |
+| `GET /` | anyone | | the visualization |
+| `GET /world?since=SEQ` | anyone | | places, beings (as you may see them), simulation status, chronicle after `SEQ` |
+| `GET /beings`, `GET /nodes`, `GET /being?id=ID` | anyone | | ids / one being (its deck reduced to a count) |
+| `GET /api/me` | anyone | | you, your being with its deck, the CSRF token |
+| `POST /api/my/being` | signed in | `name`, `at_node`, `cards: [{front, back}]`, `temperament` | summon your one being |
+| `PUT /api/my/temperament` | signed in | `generosity`, `wanderlust`, `sociability`, `conformity` | |
+| `POST /api/my/cards` · `PUT`/`DELETE /api/my/cards/:id` | signed in | `front`, `back` | edit your deck |
+| `POST /being/recall` | owner (or anyone, for the commons) | `id`, `answer` | answer a whisper (409 if none) |
+| `POST /being/beckon` | owner (hourly) · keeper | `id`, `node_id` | 429 while cooling down |
+| `POST /being`, `POST /being/incantation` | keeper | | beings of the commons |
+| `POST /simulation/start` · `stop` · `speed` | keeper | `tick_ms` | |
+| `POST /cosmos/seed` · `reset` | keeper | `beings`, `rings`, `reset` | |
+
+## Deploying
+
+Production needs `SECRET_KEY_BASE` (`mix phx.gen.secret`), `PHX_HOST`, `PHX_SERVER=true`,
+optionally `PORT` and `DATABASE_PATH`, and a mail provider for login links (configure
+`Lofi.Mailer` in `config/runtime.exs`, e.g. Postmark or Resend via Swoosh).
 
 # Release Road map
 
@@ -163,29 +207,15 @@ systems, and begin a simulation.
 
 ## Basic interaction with the lofi-eldritch-cosmos
 
-To create a new being (a standard one with only default values for it's components)
+Anyone can read the cosmos over http:
 
 ``` bash
-curl -X POST http://localhost:5454/being
+curl http://localhost:5454/beings      # {"being_ids": [...]}
+curl "http://localhost:5454/being?id=2enp3IaLemeeiMDZYj3oJ0ukJ9U"
+curl http://localhost:5454/world
 ```
 
-This will return something like
-
-``` json
-{"being_id": "2enp3IaLemeeiMDZYj3oJ0ukJ9U"}
-```
-
-which is the entity id for the being created. Now we can query for all existing beings with
-
-``` bash
-curl -X GET http://localhost:5454/beings
-```
-
-and can get the full state of the being with
-
-``` bash
-curl -X GET http://localhost:5454/being?id=2enp3IaLemeeiMDZYj3oJ0ukJ9U
-```
+Creating and tending beings needs an account (see *Your being* above).
 
 # Using the Eldritch library application 
 
@@ -257,7 +287,9 @@ where the argument is the system atom (e.g. `:temporal_decay`).
 # Dependencies
 - [quantum](https://hexdocs.pm/quantum/readme.html) is used for systems that need
   to be run at intervals of minutes or hours (such as full backups and health checks).
-- [cowboy](https://hexdocs/pm/cowboy/readme.html)
+- [phoenix](https://hexdocs.pm/phoenix) with [bandit](https://hexdocs.pm/bandit) for the web,
+  accounts generated by `mix phx.gen.auth` (bcrypt, Ecto + SQLite)
+- [exqlite](https://hexdocs.pm/exqlite) for the cosmos store
 
 # Testing
 

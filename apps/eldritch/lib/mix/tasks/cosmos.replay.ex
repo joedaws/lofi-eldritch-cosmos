@@ -48,7 +48,8 @@ defmodule Mix.Tasks.Cosmos.Replay do
     Application.put_env(:cosmos, :data_dir_name, "lofi-eldritch-cosmos-replay")
     Application.put_env(:eldritch, :load_on_start, false)
     Application.put_env(:eldritch, :autostart, false)
-    Application.put_env(:lofi, :http_port, 0)
+    endpoint = Application.get_env(:lofi, LofiWeb.Endpoint, [])
+    Application.put_env(:lofi, LofiWeb.Endpoint, Keyword.put(endpoint, :server, false))
     Logger.configure(level: :warning)
     Mix.Task.run("app.start")
 
@@ -124,7 +125,7 @@ defmodule Mix.Tasks.Cosmos.Replay do
     }
 
     File.mkdir_p!(out)
-    json = Poison.encode!(replay)
+    json = Jason.encode!(replay)
     File.write!(Path.join(out, "replay.json"), json)
     File.write!(Path.join(out, ".nojekyll"), "")
 
@@ -162,11 +163,12 @@ defmodule Mix.Tasks.Cosmos.Replay do
   # a simulated player answers some whispered incantations
   defp player() do
     for being <- Entities.being_list(),
-        get_in(being, ["incantation", "awaiting"]),
+        card = Eldritch.Being.Deck.awaiting(being["deck"]),
+        card != nil,
         :rand.uniform() < @answer_chance do
       answer =
         if :rand.uniform() < @correct_chance,
-          do: get_in(being, ["incantation", "back"]),
+          do: card["back"],
           else: "a half remembered word"
 
       Eldritch.Being.recall(being["id"], answer)
@@ -224,7 +226,7 @@ defmodule Mix.Tasks.Cosmos.Replay do
             {acc, nil}
           end
 
-        incantation = Eldritch.Being.Incantation.normalize(b["incantation"] || %{})
+        incantation = Eldritch.Being.Deck.current(b["deck"]) || %{"box" => 1, "streak" => 0}
         psyche = Eldritch.Lacan.normalize(b["psyche"])
         regs = psyche["registers"]
         {acc, knot} = intern_or_none(acc, psyche["knot"])
@@ -298,7 +300,7 @@ defmodule Mix.Tasks.Cosmos.Replay do
         {acc, i}
 
       :error ->
-        incantation = b["incantation"] || %{}
+        incantation = Eldritch.Being.Deck.current(b["deck"]) || %{}
 
         info = %{
           "id" => b["id"],

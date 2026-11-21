@@ -22,7 +22,10 @@ defmodule Eldritch.Being.Builder do
     * `"orichalcum"`  - currency (default #{@starting_orichalcum})
     * `"at_node"`     - node id the being starts at (default nil)
     * `"desire"`      - resource type the being longs for (default random)
-    * `"incantation"` - `%{"front" => ..., "back" => ...}`
+    * `"incantation"` - one card `%{"front" => ..., "back" => ...}`
+    * `"deck"`        - a list of cards (overrides `"incantation"`)
+    * `"owner"`       - id of the person who owns the being (nil for the commons)
+    * `"temperament"` - see `Eldritch.Being.Temperament`
     * `"lineage"`     - `%{"generation" => n, "parents" => [ids]}`
     * `"bonds"`       - `%{being_id => affinity}`
     * `"psyche"`      - options for `Eldritch.Lacan.new/1` (e.g. `"objet_a"`, `"chain"`)
@@ -47,7 +50,15 @@ defmodule Eldritch.Being.Builder do
     at_node(entity_server, nil)
     # a new being does not start with observations, so no override is provided
     observations(entity_server)
-    incantation(entity_server, Map.get(attributes, "incantation"))
+    deck(
+      entity_server,
+      Map.get_lazy(attributes, "deck", fn ->
+        [Map.get(attributes, "incantation") || Eldritch.Being.Incantation.default()]
+      end)
+    )
+
+    ownership(entity_server, Map.get(attributes, "owner"))
+    temperament(entity_server, Map.get(attributes, "temperament", %{}))
 
     # desire is never directly for the objet a, the cause of desire
     psyche = Eldritch.Lacan.new(Map.get(attributes, "psyche", %{}))
@@ -90,7 +101,28 @@ defmodule Eldritch.Being.Builder do
     unless has?.("status"), do: status(entity_server, "alive")
     unless has?.("harvest"), do: at_node(entity_server, nil)
     unless has?.("observations"), do: observations(entity_server)
-    unless has?.("incantation"), do: incantation(entity_server, nil)
+    # beings used to hold a single incantation; it becomes the first card of a deck
+    unless has?.("deck") do
+      case Cosmos.Entity.component(entity, "incantation") do
+        nil ->
+          deck(entity_server, [Eldritch.Being.Incantation.default()])
+
+        old ->
+          Cosmos.Entity.Server.add_component(
+            entity_server,
+            Cosmos.Entity.Component.new(
+              "deck",
+              Eldritch.System.Remind,
+              Eldritch.Being.Deck.normalize(old.value)
+            )
+          )
+
+          Cosmos.Entity.Server.delete_component(entity_server, old.id)
+      end
+    end
+
+    unless has?.("ownership"), do: ownership(entity_server, nil)
+    unless has?.("temperament"), do: temperament(entity_server, %{})
 
     unless has?.("volition"),
       do: volition(entity_server, Eldritch.Node.Resource.get_random_resource_type())
@@ -244,24 +276,35 @@ defmodule Eldritch.Being.Builder do
   end
 
   @doc """
-  an incantation is like a flash card, it has a front and a back.
-
-  The user can chose wether to fill in the front or back.
-
-  A single sided flash card is a "declarative incantation"
-  A two-sided flash card is a "flash incantation"
-
-  See `Eldritch.Being.Incantation` for the spaced repetition fields.
+  A deck of incantations: flash cards with a front and a back. A card with
+  an empty back is a "declarative incantation" (a reminder); a two-sided
+  card is a "flash incantation". See `Eldritch.Being.Deck`.
   """
-  def incantation(entity_server, incantation \\ nil) do
-    incantation = incantation || Eldritch.Being.Incantation.default()
+  def deck(entity_server, cards) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("deck", Eldritch.System.Remind, Eldritch.Being.Deck.new(cards))
+    )
+  end
 
+  @doc """
+  Who the being belongs to (`"owner"`: a person's id, or nil for the
+  commons) and when its owner last beckoned it.
+  """
+  def ownership(entity_server, owner) do
+    Cosmos.Entity.Server.add_component(
+      entity_server,
+      Cosmos.Entity.Component.new("ownership", :attribute, %{"owner" => owner, "beckoned_at" => nil})
+    )
+  end
+
+  def temperament(entity_server, temperament) do
     Cosmos.Entity.Server.add_component(
       entity_server,
       Cosmos.Entity.Component.new(
-        "incantation",
-        Eldritch.System.Remind,
-        Eldritch.Being.Incantation.new(incantation["front"], incantation["back"])
+        "temperament",
+        :attribute,
+        Eldritch.Being.Temperament.new(temperament)
       )
     )
   end

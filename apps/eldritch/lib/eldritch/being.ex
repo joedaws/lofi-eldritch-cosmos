@@ -3,7 +3,7 @@ defmodule Eldritch.Being do
   This module is responsible for high level interactions
   with generic beings.
   """
-  alias Eldritch.Being.{Actions, Incantation}
+  alias Eldritch.Being.{Actions, Deck}
 
   @max_ichor 200
 
@@ -47,66 +47,79 @@ defmodule Eldritch.Being do
   end
 
   @doc """
-  Replace the incantation (resets its spaced repetition progress)
+  Replace a being's whole deck with a single card (admin tool)
   """
   def set_incantation(being_id, front, back) do
-    with {:ok, _} <- fetch(being_id) do
-      update(being_id, "incantation", fn comp -> %{comp | value: Incantation.new(front, back)} end)
+    with {:ok, _} <- fetch(being_id),
+         {:ok, deck, _card} <- Deck.add(Deck.new(), front, back) do
+      update(being_id, "deck", fn comp -> %{comp | value: deck} end)
       :ok
     end
   end
 
   @doc """
-  Answer the incantation a being is whispering.
+  Answer the card a being is whispering.
 
-  Returns `{:ok, result_map}`, `{:error, :not_awaiting, ms_until_due}`
-  or `:error` for unknown beings. A correct answer feeds the being
-  ichor, which can even call a faded being back from the void.
+  `by` is the id of the person answering (nil for system callers such as the
+  replay recorder). Only a being's owner may answer it; anyone may answer the
+  beings of the commons.
+
+  Returns `{:ok, result_map}`, `{:error, :not_awaiting, ms_until_due}`,
+  `{:error, :not_yours}` or `:error` for unknown beings. A correct answer
+  feeds the being ichor, which can even call a faded being back from the void.
   """
-  def recall(being_id, answer) do
-    with {:ok, entity} <- fetch(being_id) do
+  def recall(being_id, answer, by \\ :system) do
+    with {:ok, entity} <- fetch(being_id),
+         vals = Eldritch.Entities.to_values(entity),
+         :ok <- may_answer(vals, by) do
       pid = Cosmos.Entity.Cache.server_process(being_id)
-      vals = Eldritch.Entities.to_values(entity)
-      incantation = Incantation.normalize(vals["incantation"])
 
-      if incantation["awaiting"] do
-        correct = Incantation.correct?(incantation, answer)
-
-        new_incantation =
-          if correct, do: Incantation.promote(incantation), else: Incantation.demote(incantation)
-
-        Cosmos.Entity.Server.update_component(pid, "incantation", fn comp ->
-          %{comp | value: new_incantation}
+      result =
+        Cosmos.Entity.Server.get_and_update_component(pid, "deck", fn comp ->
+          case Deck.answer(comp.value, answer) do
+            {:ok, result, deck} -> {{:ok, result}, %{comp | value: deck}}
+            error -> {error, comp}
+          end
         end)
 
-        gain = if correct, do: Incantation.reward(incantation), else: 0
-        ichor = if gain > 0, do: Actions.change_ichor(pid, gain), else: vals["ichor"]
+      case result do
+        {:ok, %{"correct" => correct, "ichor_gain" => gain} = res} ->
+          ichor = if gain > 0, do: Actions.change_ichor(pid, gain), else: vals["ichor"]
+          if correct and vals["status"] == "faded" and ichor > 0, do: revive(being_id, vals)
 
-        if correct and vals["status"] == "faded" and ichor > 0, do: revive(being_id, vals)
+          Eldritch.Chronicle.record(
+            :recall,
+            if(correct,
+              do: "#{vals["name"]}'s incantation was answered true. Ichor surges (+#{gain}).",
+              else: "#{vals["name"]}'s incantation was answered falsely. It returns to the first box."
+            ),
+            %{"beings" => [being_id]}
+          )
 
-        Eldritch.Chronicle.record(
-          :recall,
-          if(correct,
-            do: "#{vals["name"]}'s incantation was answered true. Ichor surges (+#{gain}).",
-            else: "#{vals["name"]}'s incantation was answered falsely. It returns to the first box."
-          ),
-          %{"beings" => [being_id]}
-        )
+          {:ok, Map.put(res, "ichor", ichor)}
 
-        {:ok,
-         %{
-           "correct" => correct,
-           "expected" => incantation["back"],
-           "ichor_gain" => gain,
-           "ichor" => ichor,
-           "box" => new_incantation["box"],
-           "due_at" => new_incantation["due_at"]
-         }}
-      else
-        {:error, :not_awaiting, max(0, incantation["due_at"] - Eldritch.Clock.now_ms())}
+        {:error, :no_component} ->
+          {:error, :not_awaiting, nil}
+
+        error ->
+          error
       end
     end
   end
+
+  @doc "Whether the person `by` may answer and tend this being"
+  def may_answer(vals, by) do
+    owner = get_in(vals, ["ownership", "owner"])
+
+    cond do
+      by == :system -> :ok
+      owner == nil and by != nil -> :ok
+      owner != nil and owner == by -> :ok
+      true -> {:error, :not_yours}
+    end
+  end
+
+  def owner(vals), do: get_in(vals, ["ownership", "owner"])
 
   @doc """
   Draw a being to a node of your choosing

@@ -275,43 +275,46 @@ defmodule Cosmos.Database do
 
   defp kind(_), do: nil
 
-  # entities used to be stored as one term_to_binary file per entity
+  # entities used to be stored as one term_to_binary file per entity, named by
+  # the entity id. Only files that decode to an entity are imported and moved:
+  # anything else in the data dir (other databases, notes) is left untouched.
   defp import_legacy_files(state, persist_dir) do
-    files =
+    legacy =
       persist_dir
       |> Path.join("*")
       |> Path.wildcard()
       |> Enum.filter(&File.regular?/1)
-      |> Enum.reject(&String.starts_with?(Path.basename(&1), @db_file))
+      |> Enum.reject(&String.contains?(Path.basename(&1), "."))
+      |> Enum.flat_map(fn file ->
+        with {:ok, binary} <- File.read(file),
+             %Cosmos.Entity{} = entity <- safe_decode(binary) do
+          [{file, entity}]
+        else
+          _ -> []
+        end
+      end)
 
-    if files == [] do
+    if legacy == [] do
       state
     else
       backup = Path.join(persist_dir, "legacy-files-backup")
       File.mkdir_p!(backup)
 
       state =
-        Enum.reduce(files, state, fn file, state ->
+        Enum.reduce(legacy, state, fn {file, entity}, state ->
           key = Path.basename(file)
-
-          state =
-            case File.read(file) do
-              {:ok, binary} ->
-                case decode(binary, key) do
-                  nil -> state
-                  data -> %{state | dirty: Map.put(state.dirty, key, {:put, data})}
-                end
-
-              _ ->
-                state
-            end
-
           File.rename!(file, Path.join(backup, key))
-          state
+          %{state | dirty: Map.put(state.dirty, key, {:put, entity})}
         end)
 
-      Logger.info("imported #{length(files)} legacy entity files (originals in #{backup})")
+      Logger.info("imported #{length(legacy)} legacy entity files (originals in #{backup})")
       flush(state)
     end
+  end
+
+  defp safe_decode(binary) do
+    :erlang.binary_to_term(binary, [:safe])
+  rescue
+    ArgumentError -> nil
   end
 end

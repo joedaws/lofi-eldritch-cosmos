@@ -141,7 +141,11 @@ defmodule Eldritch.System.Communion do
           Map.get(bonds(holder), asker["id"], 0) < 0 or
           Lacan.unknotted(holder_psyche) == "imaginary"
 
-      given = if refuse?, do: 0, else: Actions.take_resource(holder["pid"], want, @gift_units)
+      # an owner's temperament: generosity 50 always gives 3, 0 never gives, 100 gives 6
+      generosity = Eldritch.Being.Temperament.factor(holder, "generosity")
+      refuse? = refuse? or :rand.uniform() > generosity
+      units = max(1, round(@gift_units * generosity))
+      given = if refuse?, do: 0, else: Actions.take_resource(holder["pid"], want, units)
 
       if given > 0 do
         Actions.give_resource(asker["pid"], want, given)

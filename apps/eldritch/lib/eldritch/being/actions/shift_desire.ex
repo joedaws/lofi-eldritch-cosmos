@@ -37,6 +37,7 @@ defmodule Eldritch.Being.Actions.ShiftDesire do
         other: ctx.other,
         semblable_desire: semblable && get_in(semblable, ["volition", "desire"]),
         semblable_name: semblable && semblable["name"],
+        conformity: Eldritch.Being.Temperament.factor(ctx.being, "conformity"),
         contiguous:
           ctx |> neighbors() |> Enum.map(&get_in(ctx.graph, [&1, "resource_type"])) |> Enum.uniq()
       })

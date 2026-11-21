@@ -14,6 +14,17 @@ defmodule Eldritch.Being.Actions.Explore do
 
   @impl true
   def perform(ctx) do
+    # a homebody sometimes stays where it is instead of wandering
+    homebody = max(0, 50 - Eldritch.Being.Temperament.trait(ctx.being, "wanderlust")) / 100
+
+    if :rand.uniform() < homebody do
+      {"rest", "I stay in #{node_name(ctx, ctx.being["at_node"])}. It is enough."}
+    else
+      wander(ctx)
+    end
+  end
+
+  defp wander(ctx) do
     visited = visited(ctx)
     options = neighbors(ctx)
 

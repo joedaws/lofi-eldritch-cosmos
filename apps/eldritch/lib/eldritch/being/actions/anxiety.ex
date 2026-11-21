@@ -36,7 +36,9 @@ defmodule Eldritch.Being.Actions.Anxiety do
     end
 
     Lacan.update(ctx.pid, fn p ->
-      %{p | "lack" => min(100, p["lack"] + 10)} |> Lacan.strengthen("real", 0.02)
+      %{p | "lack" => min(100, p["lack"] + 10)}
+      |> Map.put("objet_a_revealed", true)
+      |> Lacan.strengthen("real", 0.02)
     end)
 
     if :rand.uniform() < 0.5 do

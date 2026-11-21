@@ -65,3 +65,25 @@ defmodule Cosmos.EntityFixesTest do
     assert Cosmos.Database.get(key) == nil
   end
 end
+
+defmodule Cosmos.DatabaseLegacyImportTest do
+  use ExUnit.Case
+
+  test "only old entity files are imported; other files in the data dir are left alone" do
+    dir = Path.join(System.tmp_dir!(), "cosmos-import-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
+    entity = Cosmos.Entity.new()
+    File.write!(Path.join(dir, entity.id), :erlang.term_to_binary(entity))
+    File.write!(Path.join(dir, "accounts.sqlite3"), "SQLite format 3 pretend")
+    File.write!(Path.join(dir, "NOTES"), "not an entity")
+
+    {:ok, pid} = GenServer.start_link(Cosmos.Database, dir)
+    GenServer.stop(pid)
+
+    assert File.exists?(Path.join(dir, "accounts.sqlite3"))
+    assert File.exists?(Path.join(dir, "NOTES"))
+    refute File.exists?(Path.join(dir, entity.id))
+    assert File.exists?(Path.join([dir, "legacy-files-backup", entity.id]))
+    File.rm_rf!(dir)
+  end
+end

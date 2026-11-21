@@ -195,6 +195,8 @@ defmodule Eldritch.Lacan do
     max_other = other |> Map.values() |> Enum.max(fn -> 1 end) |> max(1)
     semblable = Map.get(context, :semblable_desire)
     contiguous = Map.get(context, :contiguous, [])
+    # an owner's temperament: 1.0 is the commons; above follows the Other more, below its own chain
+    conformity = Map.get(context, :conformity, 1.0)
     chain = psyche["chain"]
 
     s = weight(psyche, "symbolic")
@@ -208,9 +210,9 @@ defmodule Eldritch.Lacan do
     scored =
       for c <- candidates do
         pulls = %{
-          other: 3 * s * Map.get(other, c, 0) / max_other,
+          other: 3 * s * conformity * Map.get(other, c, 0) / max_other,
           semblable: if(c == semblable, do: 3 * i, else: 0),
-          repetition: if(c in chain, do: 2 * r, else: 0),
+          repetition: if(c in chain, do: 2 * r * (2 - conformity), else: 0),
           contiguity: if(c in contiguous, do: 0.6, else: 0)
         }
 

@@ -10,7 +10,10 @@ defmodule Eldritch.Being.Actions.SeekKin do
   def priority(), do: 5
 
   @impl true
-  def preconditions_satisfied?(ctx), do: kin_nearby(ctx) != [] and :rand.uniform() < @pull
+  def preconditions_satisfied?(ctx) do
+    pull = min(0.95, @pull * Eldritch.Being.Temperament.factor(ctx.being, "sociability"))
+    kin_nearby(ctx) != [] and :rand.uniform() < pull
+  end
 
   @impl true
   def perform(ctx) do

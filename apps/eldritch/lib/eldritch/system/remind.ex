@@ -1,11 +1,11 @@
 defmodule Eldritch.System.Remind do
   @moduledoc """
-  Spaced repetition: when a being's incantation comes due the being
+  Spaced repetition: when a card in a being's deck comes due, the being
   begins to whisper it and waits for someone to answer
-  (see `Eldritch.Being.recall/2`).
+  (see `Eldritch.Being.recall/3`). A being whispers one card at a time.
   """
   require Logger
-  alias Eldritch.Being.Incantation
+  alias Eldritch.Being.Deck
 
   def update_components(system) do
     for {pid, being_id} <- Eldritch.Entities.members(system), do: remind(pid, being_id)
@@ -13,25 +13,22 @@ defmodule Eldritch.System.Remind do
 
   defp remind(being_server, being_id) do
     result =
-      Cosmos.Entity.Server.get_and_update_component(being_server, "incantation", fn comp ->
-        incantation = Incantation.normalize(comp.value)
-
-        if not incantation["awaiting"] and Incantation.type(incantation) != :empty and
-             Incantation.due?(incantation) do
-          {{:whisper, incantation}, %{comp | value: %{incantation | "awaiting" => true}}}
-        else
-          {:quiet, %{comp | value: incantation}}
-        end
+      Cosmos.Entity.Server.get_and_update_component(being_server, "deck", fn comp ->
+        {card, deck} = Deck.whisper(comp.value)
+        {card, %{comp | value: deck}}
       end)
 
     case result do
-      {:whisper, incantation} ->
+      %{"front" => front} ->
         name = Cosmos.Entity.Server.value(being_server, "name")
-        Logger.info("#{name} whispers: #{incantation["front"]}")
+        owned? = Cosmos.Entity.Server.value(being_server, "ownership", %{})["owner"] != nil
+        Logger.debug("#{name} whispers: #{front}")
 
-        Eldritch.Chronicle.record(:whisper, "#{name} whispers \"#{incantation["front"]}\"", %{
-          "beings" => [being_id]
-        })
+        # cards belong to their owner: the chronicle only names the commons' cards
+        text =
+          if owned?, do: "#{name} whispers an incantation.", else: "#{name} whispers \"#{front}\""
+
+        Eldritch.Chronicle.record(:whisper, text, %{"beings" => [being_id]})
 
       _ ->
         :ok
