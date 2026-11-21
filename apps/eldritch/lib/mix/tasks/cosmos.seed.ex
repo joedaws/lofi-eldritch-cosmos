@@ -24,14 +24,12 @@ defmodule Mix.Tasks.Cosmos.Seed do
     # wait for the start up script to register the systems
     Eldritch.Simulation.initialize_systems()
 
-    data_dir = Cosmos.get_persist_dir()
+    case Cosmos.Database.count() do
+      0 ->
+        Mix.shell().info("The cosmos is empty. Proceeding to seed...")
 
-    case File.ls(data_dir) do
-      {:ok, []} ->
-        Mix.shell().info("Data dir is empty. Proceeding to seed...")
-
-      {:ok, files} ->
-        Mix.shell().info("Found #{length(files)} item(s) in #{data_dir}.")
+      count ->
+        Mix.shell().info("Found #{count} entities in #{Cosmos.Database.path()}.")
 
         remove? =
           cond do
@@ -46,12 +44,6 @@ defmodule Mix.Tasks.Cosmos.Seed do
         else
           Mix.shell().info("Keeping existing data. Seeding cosmos on top of it...")
         end
-
-      {:error, :enoent} ->
-        Mix.shell().info("No data dir found at #{data_dir}. It will be created automatically.")
-
-      {:error, reason} ->
-        Mix.raise("Failed to check directory #{data_dir}. Reason: #{inspect(reason)}")
     end
 
     seed_cosmos(opts)

@@ -64,7 +64,7 @@ defmodule Eldritch.Genesis do
       end
     end)
 
-    Logger.info("loaded #{length(ids)} entities from #{Cosmos.get_persist_dir()}")
+    Logger.info("loaded #{length(ids)} entities from #{Cosmos.Database.path()}")
     length(ids)
   end
 
@@ -104,8 +104,7 @@ defmodule Eldritch.Genesis do
 
     ids = Enum.uniq(persisted ++ running)
     Enum.each(ids, &Cosmos.Entity.Cache.stop/1)
-    Enum.each(ids, &Cosmos.Database.delete/1)
-    Cosmos.Database.sync()
+    Cosmos.Database.delete_all()
     Eldritch.Chronicle.clear()
     Eldritch.Chronicle.record(:cosmos, "The cosmos is unmade.")
     length(ids)

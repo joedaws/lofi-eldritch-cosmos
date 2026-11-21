@@ -77,6 +77,21 @@ Every being is an entity whose components subscribe it to systems
 
 Noteworthy happenings are written to the **chronicle** (`Eldritch.Chronicle`) shown in the side panel.
 
+## Persistence
+
+Entities are stored in SQLite at `$XDG_DATA_HOME/lofi-eldritch-cosmos/cosmos.sqlite3`
+(usually `~/.local/share/...`), one row per entity (`id`, `kind`, `data`, `updated_at`).
+`Cosmos.Database` batches writes: changes collect in memory and are committed in one
+transaction every 500ms (`config :cosmos, flush_interval_ms: 500`), so an entity that changes
+many times between flushes is written once. Reads see pending writes. A crash loses at most
+one flush interval. On shutdown, after seeding, and on `Cosmos.Database.sync/0`, everything is flushed.
+
+Data saved by the older one-file-per-entity store is imported automatically on start up;
+the original files are moved to `legacy-files-backup/` next to the database.
+
+Rough capacity (4 cores, 1s tick): ~2,000 beings. Births stop at `config :eldritch, :max_population`
+(default 40). Above a few hundred beings the browser's `/world` poll gets large (~0.8 KB per being).
+
 ## HTTP API
 
 | Method & path | Body | |
