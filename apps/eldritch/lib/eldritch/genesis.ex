@@ -26,7 +26,7 @@ defmodule Eldritch.Genesis do
             "ichor" => Enum.random(70..130),
             "incantation" => Eldritch.KnowledgePack.random_incantation(),
             # a cosmos where everyone is a newborn is a strange cosmos
-            "lineage" => %{"age" => Enum.random(0..400)}
+            "lineage" => %{"age_fraction" => :rand.uniform() * 0.6}
           })
         end
       end

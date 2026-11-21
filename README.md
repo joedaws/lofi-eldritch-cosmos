@@ -58,6 +58,10 @@ Each person may summon **one being** (the **My being** tab):
   - *sociability*: how strongly it seeks bonded beings next door
   - *conformity*: whether its next desire follows the big Other or its own chain
 - **Beckon** it to a place, once an hour (`config :eldritch, :beckon_cooldown_ms`).
+- **Keep it alive by remembering.** Your being never dies of old age. Each answer you give
+  it buys 3 days of grace (`:devotion_grace_ms`), during which it cannot starve: when its
+  ichor runs low it endures. Leave it unanswered longer and it withers and fades; one
+  answer calls it back. Faded owned beings never crumble away.
 
 Beings nobody owns (the seeded ones and their children) are **the commons**: anyone signed
 in may answer their whispers.
@@ -136,6 +140,19 @@ Every being has a **psyche** (`Eldritch.Lacan`) that shapes its decisions:
 - **The paternal chain.** A summoned child's chain begins with its parents' desires; its cause of
   desire is its own.
 
+### Time
+
+The map moves every tick (about a second), but lives run on the clock so the cosmos keeps
+the pace of the people who visit it:
+
+- beings of the commons live **1 to 4 days** (`config :eldritch, :lifespan_ms`), then wither;
+- their husks crumble to dust a day after fading (`:husk_ms`);
+- when fewer than 8 beings live (`:min_population`), the Heart of the Cosmos dreams a new
+  being every 60 ticks (`:dream_interval_ticks`), so the cosmos cannot die out;
+- owned beings are kept by their owner's remembering (see *Your being*).
+
+The replay recorder shortens lifespans to minutes so recordings still show generations.
+
 Noteworthy happenings are written to the **chronicle** (`Eldritch.Chronicle`) shown in the side panel.
 
 ## Persistence
@@ -200,7 +217,8 @@ optionally `PORT` and `DATABASE_PATH`, and a mail provider for login links (conf
 
 - [ ] Push live changes to the page (Phoenix Channels) for the region in view, instead of polling
 - [ ] Store the chronicle so history survives restarts
-- [ ] A population that sustains itself (births tied to the health of the cosmos)
+- [x] Lives on the clock: commons beings live days, owned beings live by their owner's
+  remembering, a dwindling cosmos dreams new beings, husks crumble
 - [ ] Ranks or roles, toward social organization
 - [ ] Deploy (one server, SQLite with backups) with a mail provider for login links
 

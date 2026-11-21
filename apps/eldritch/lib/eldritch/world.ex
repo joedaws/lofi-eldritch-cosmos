@@ -68,6 +68,22 @@ defmodule Eldritch.World do
     }
   end
 
+  # ages in milliseconds of real time; owned beings have no lifespan, only
+  # the grace their owner's last answer bought them
+  def lineage_view(b) do
+    lineage = Eldritch.Being.Life.normalize(b["lineage"])
+    owned = Eldritch.Being.owner(b) != nil
+
+    %{
+      "generation" => lineage["generation"],
+      "parents" => lineage["parents"],
+      "age_ms" => Eldritch.Being.Life.age_ms(lineage),
+      "lifespan_ms" => if(owned, do: nil, else: lineage["lifespan_ms"]),
+      "grace_left_ms" => if(owned, do: Eldritch.Being.Life.grace_left_ms(b), else: nil),
+      "withering" => Eldritch.Being.Life.condition(b) != :vital
+    }
+  end
+
   def being_view(b, viewer \\ nil) do
     deck = Eldritch.Being.Deck.normalize(b["deck"] || b["incantation"])
     card = Eldritch.Being.Deck.current(deck) || %{}
@@ -90,7 +106,7 @@ defmodule Eldritch.World do
       "bonds" => b["bonds"] || %{},
       "known_nodes" => map_size(get_in(b, ["observations", "nodes"]) || %{}),
       "visited_nodes" => map_size(get_in(b, ["observations", "visited"]) || %{}),
-      "lineage" => b["lineage"] || %{"generation" => 0, "parents" => []},
+      "lineage" => lineage_view(b),
       "psyche" => psyche_view(b["psyche"]),
       "temperament" => Eldritch.Being.Temperament.new(b["temperament"] || %{}),
       "owner_id" => owner,

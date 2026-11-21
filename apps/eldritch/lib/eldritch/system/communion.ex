@@ -99,8 +99,11 @@ defmodule Eldritch.System.Communion do
     psyche = Lacan.normalize(a["psyche"])
     i = Lacan.weight(psyche, "imaginary")
 
+    # a being keeps its mirror a while: changing it is much rarer than finding one
+    stickiness = if psyche["identification"], do: 0.1, else: 1.0
+
     if psyche["identification"] != b["id"] and (b["ichor"] || 0) > (a["ichor"] || 0) and
-         :rand.uniform() < (i - 0.25) * 0.5 do
+         :rand.uniform() < (i - 0.25) * 0.5 * stickiness do
       Lacan.update(a["pid"], fn p ->
         %{p | "identification" => b["id"]} |> Lacan.strengthen("imaginary", 0.03)
       end)
@@ -189,7 +192,7 @@ defmodule Eldritch.System.Communion do
       end
 
       # quarrels are frequent; only the occasional one makes the chronicle
-      if :rand.uniform() < 0.08 do
+      if :rand.uniform() < 0.03 do
         Chronicle.record(
           :rivalry,
           "#{a["name"]} and #{b["name"]} quarrel over the dwindling #{pretty(desire)}.",

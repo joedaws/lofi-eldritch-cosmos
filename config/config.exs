@@ -27,7 +27,16 @@ config :eldritch,
   # load all persisted entities into memory when the application boots
   load_on_start: true,
   # how often an owner may beckon their being (ms)
-  beckon_cooldown_ms: 60 * 60 * 1000
+  beckon_cooldown_ms: 60 * 60 * 1000,
+  # beings of the commons live 1 to 4 days of real time (see Eldritch.Being.Life)
+  lifespan_ms: {24 * 60 * 60 * 1000, 4 * 24 * 60 * 60 * 1000},
+  # an owned being stays vital this long after its owner last answered it
+  devotion_grace_ms: 3 * 24 * 60 * 60 * 1000,
+  # husks of faded commons beings crumble to dust after this long
+  husk_ms: 24 * 60 * 60 * 1000,
+  # below this many living beings the cosmos dreams a new one every interval
+  min_population: 8,
+  dream_interval_ticks: 60
 
 # ---------- lofi: accounts and the web ----------
 

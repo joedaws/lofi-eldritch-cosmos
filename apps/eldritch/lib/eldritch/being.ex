@@ -84,6 +84,9 @@ defmodule Eldritch.Being do
 
       case result do
         {:ok, %{"correct" => correct, "ichor_gain" => gain} = res} ->
+          # the owner's remembering is what keeps an owned being vital
+          if by != :system and by != nil and by == owner(vals), do: Eldritch.Being.Life.remembered(pid)
+
           ichor = if gain > 0, do: Actions.change_ichor(pid, gain), else: vals["ichor"]
           if correct and vals["status"] == "faded" and ichor > 0, do: revive(being_id, vals)
 
@@ -146,6 +149,11 @@ defmodule Eldritch.Being do
   def fade(being_id, vals) do
     pid = Cosmos.Entity.Cache.server_process(being_id)
     Cosmos.Entity.Server.update_component(pid, "status", fn comp -> %{comp | value: "faded"} end)
+
+    Cosmos.Entity.Server.update_component(pid, "lineage", fn comp ->
+      %{comp | value: Map.put(comp.value, "faded_at", Eldritch.Being.Life.now())}
+    end)
+
     Actions.leave_node(being_id, vals["at_node"])
     set_thought(being_id, "faded", "...")
 

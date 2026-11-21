@@ -34,7 +34,9 @@ defmodule LofiWeb.MeController do
           "name" => vals["name"],
           "temperament" => Eldritch.Being.Temperament.new(vals["temperament"] || %{}),
           "cards" => cards,
-          "beckon_wait_ms" => Eldritch.Being.Owned.beckon_wait(vals)
+          "beckon_wait_ms" => Eldritch.Being.Owned.beckon_wait(vals),
+          "grace_left_ms" => Eldritch.Being.Life.grace_left_ms(vals),
+          "grace_ms" => Eldritch.Being.Life.grace_ms()
         }
     end
   end

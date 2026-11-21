@@ -387,7 +387,7 @@
         id: info.id, name: info.name, status: faded ? "faded" : "alive", ichor: row[1], max_ichor: R.meta.max_ichor,
         at_node: node ? node.id : null, resources, desire: S[row[6]], intent: S[row[4]], thought: S[row[5]],
         bonds: row.bonds, known_nodes: row[9], visited_nodes: row[10],
-        lineage: { generation: info.generation, parents: info.parents, age: row[11], lifespan: info.lifespan },
+        lineage: { generation: info.generation, parents: info.parents, age_ms: row[11] * 1000, lifespan_ms: info.lifespan ? info.lifespan * 1000 : null },
         incantation: { front: info.front, has_back: info.has_back, box: row[12], awaiting: row[13] === 1, streak: row[14], due_at: null },
         psyche: row.length > 15 ? {
           lack: row[15], jouissance: row[16],
@@ -732,7 +732,8 @@
 
   function fmtMs(ms) {
     const s = Math.ceil(ms / 1000);
-    if (s < 60) return `${s}s`; if (s < 3600) return `${Math.ceil(s / 60)} min`; return `${Math.round(s / 360) / 10} h`;
+    if (s < 60) return `${s}s`; if (s < 3600) return `${Math.ceil(s / 60)} min`;
+    if (s < 86400) return `${Math.round(s / 360) / 10} h`; return `${Math.round(s / 8640) / 10} days`;
   }
 
   function renderStats() {
@@ -821,7 +822,8 @@
       <div class="row"><span>longs for</span><span class="chip desire"><span class="dot" style="background:${resColor(b.desire)}"></span>${esc(pretty(b.desire))}</span></div>
       ${b.psyche?.reason ? `<div class="reason">because ${esc(b.psyche.reason)}</div>` : ""}
       <div class="row"><span>knows</span><span>${b.known_nodes} places · visited ${b.visited_nodes}</span></div>
-      <div class="row"><span>lineage</span><span>generation ${lin.generation ?? 0} · age ${lin.age ?? 0}/${lin.lifespan ?? "?"}</span></div>
+      <div class="row"><span>lineage</span><span>generation ${lin.generation ?? 0} · age ${fmtMs(lin.age_ms || 0)}${lin.lifespan_ms ? ` of ${fmtMs(lin.lifespan_ms)}` : ""}</span></div>
+      ${lin.grace_left_ms != null ? `<div class="row"><span>vitality</span><span>${lin.withering ? '<span style="color:var(--danger)">withering: its owner has not answered it</span>' : `kept by its owner's remembering · ${fmtMs(lin.grace_left_ms)} of grace left`}</span></div>` : lin.withering ? '<div class="row"><span>vitality</span><span style="color:var(--danger)">ancient, withering</span></div>' : ""}
       ${(lin.parents || []).length ? `<div class="row"><span>summoned by</span><span>${lin.parents.map(beingLink).join(" & ")}</span></div>` : ""}
       ${psycheSection(b)}
       <h3>Carries</h3>
@@ -952,6 +954,8 @@
     const cards = mine.cards || [];
     return `<div class="card">
       <div class="row"><h2>${esc(mine.name)}</h2>${live && live.status === "faded" ? '<span class="chip">faded: answer its whispers to call it back</span>' : ""}</div>
+      <div class="row"><span>vitality</span><span>${mine.grace_left_ms > 0 ? `${fmtMs(mine.grace_left_ms)} of grace left` : '<span style="color:var(--danger)">withering: answer its whispers</span>'}</span></div>
+      <p class="empty" style="font-style:normal">Each answer you give it restores ${fmtMs(mine.grace_ms)} of grace. Left unanswered longer, it withers and fades; an answer calls it back.</p>
       <div class="controls"><button data-being="${esc(mine.id)}">Find it on the map</button></div>
       <h3>Temperament</h3>
       <form class="form-grid" data-mine="temperament">

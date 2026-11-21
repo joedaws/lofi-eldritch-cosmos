@@ -8,11 +8,6 @@ defmodule Eldritch.Being.Builder do
   """
   @starting_ichor 100
   @starting_orichalcum 100
-  # measured in volition cycles
-  @lifespan 500..900
-
-  def default_lifespan(), do: Enum.max(@lifespan)
-  def random_lifespan(), do: Enum.random(@lifespan)
 
   @doc """
   Builds a standard being. Every attribute may be overridden:
@@ -73,13 +68,7 @@ defmodule Eldritch.Being.Builder do
     psyche(entity_server, psyche)
 
     bonds(entity_server, Map.get(attributes, "bonds", %{}))
-    lineage(
-      entity_server,
-      Map.merge(
-        %{"generation" => 0, "parents" => [], "age" => 0, "lifespan" => random_lifespan()},
-        Map.get(attributes, "lineage", %{})
-      )
-    )
+    lineage(entity_server, Eldritch.Being.Life.new_lineage(Map.get(attributes, "lineage", %{})))
 
     case Map.get(attributes, "at_node") do
       nil -> :ok
@@ -141,14 +130,16 @@ defmodule Eldritch.Being.Builder do
       psyche(entity_server, psyche)
     end
 
-    unless has?.("lineage"),
-      do:
-        lineage(entity_server, %{
-          "generation" => 0,
-          "parents" => [],
-          "age" => 0,
-          "lifespan" => random_lifespan()
-        })
+    # lineages used to count age in ticks; ages now run on the clock
+    case Cosmos.Entity.component(entity, "lineage") do
+      nil ->
+        lineage(entity_server, Eldritch.Being.Life.new_lineage())
+
+      %{value: value} ->
+        Cosmos.Entity.Server.update_component(entity_server, "lineage", fn comp ->
+          %{comp | value: Eldritch.Being.Life.normalize(value)}
+        end)
+    end
 
     # observations used to be a MapSet of {node_id, resource_type} tuples
     case Cosmos.Entity.component(entity, "observations") do
@@ -294,7 +285,12 @@ defmodule Eldritch.Being.Builder do
   def ownership(entity_server, owner) do
     Cosmos.Entity.Server.add_component(
       entity_server,
-      Cosmos.Entity.Component.new("ownership", :attribute, %{"owner" => owner, "beckoned_at" => nil})
+      Cosmos.Entity.Component.new("ownership", :attribute, %{
+        "owner" => owner,
+        "beckoned_at" => nil,
+        # an owner's answers keep the being vital (see Eldritch.Being.Life)
+        "last_answer_at" => if(owner, do: Eldritch.Being.Life.now(), else: nil)
+      })
     )
   end
 

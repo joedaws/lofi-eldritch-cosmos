@@ -48,6 +48,9 @@ defmodule Mix.Tasks.Cosmos.Replay do
     Application.put_env(:cosmos, :data_dir_name, "lofi-eldritch-cosmos-replay")
     Application.put_env(:eldritch, :load_on_start, false)
     Application.put_env(:eldritch, :autostart, false)
+    # a recording is minutes long: give the commons minutes of life, not days,
+    # so generations still rise and fall in the replay
+    Application.put_env(:eldritch, :lifespan_ms, {500_000, 900_000})
     endpoint = Application.get_env(:lofi, LofiWeb.Endpoint, [])
     Application.put_env(:lofi, LofiWeb.Endpoint, Keyword.put(endpoint, :server, false))
     Logger.configure(level: :warning)
@@ -255,7 +258,8 @@ defmodule Mix.Tasks.Cosmos.Replay do
           bonds,
           map_size(get_in(b, ["observations", "nodes"]) || %{}),
           map_size(get_in(b, ["observations", "visited"]) || %{}),
-          get_in(b, ["lineage", "age"]) || 0,
+          # seconds of (recorded) life
+          div(Eldritch.Being.Life.age_ms(b["lineage"]), 1000),
           incantation["box"],
           if(incantation["awaiting"], do: 1, else: 0),
           incantation["streak"],
@@ -307,7 +311,7 @@ defmodule Mix.Tasks.Cosmos.Replay do
           "name" => b["name"],
           "generation" => get_in(b, ["lineage", "generation"]) || 0,
           "parents" => get_in(b, ["lineage", "parents"]) || [],
-          "lifespan" => get_in(b, ["lineage", "lifespan"]),
+          "lifespan" => div(Eldritch.Being.Life.normalize(b["lineage"])["lifespan_ms"], 1000),
           "front" => incantation["front"],
           "has_back" => (incantation["back"] || "") != ""
         }

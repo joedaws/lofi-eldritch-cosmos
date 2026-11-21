@@ -2,7 +2,8 @@ defmodule Eldritch.System.Volition do
   @moduledoc """
   The will of the beings. Every cycle each living being:
 
-    1. ages by one cycle; past its lifespan its ichor withers. Its psyche
+    1. checks its life (`Eldritch.Being.Life`): a commons being past its
+       lifespan, or an owned being its owner has neglected, withers. Its psyche
        lives a tick too (`Eldritch.Lacan.tick/2`): lack grows, the knot of
        the registers loosens or reties
     2. fades if its ichor has run dry
@@ -27,6 +28,8 @@ defmodule Eldritch.System.Volition do
            |> Enum.sort_by(& &1.priority(), :desc)
 
   @wither 3
+  # the least ichor an owned, remembered being can fall to
+  @endure_ichor 15
 
   def actions(), do: @actions
 
@@ -51,6 +54,8 @@ defmodule Eldritch.System.Volition do
     end
 
     Eldritch.Simulation.tick()
+    dream(length(living), graph)
+    crumble(beings)
   end
 
   defp act(being, shared) do
@@ -60,6 +65,11 @@ defmodule Eldritch.System.Volition do
     live_psyche(ctx)
 
     cond do
+      # an owned being its owner keeps remembering cannot starve: it endures
+      sustained?(being) ->
+        Eldritch.Being.Actions.change_ichor(ctx.pid, @endure_ichor - (being["ichor"] || 0))
+        think(ctx, {"endure", "I am nearly spent, yet something remembers me. I endure."})
+
       (being["ichor"] || 0) <= 0 ->
         Eldritch.Being.fade(being["id"], being)
 
@@ -78,6 +88,56 @@ defmodule Eldritch.System.Volition do
           nil -> think(ctx, {"rest", "I rest."})
           action -> think(ctx, action.perform(ctx))
         end
+    end
+  end
+
+  defp sustained?(being) do
+    Eldritch.Being.owner(being) != nil and (being["ichor"] || 0) < @endure_ichor and
+      Eldritch.Being.Life.condition(being) == :vital
+  end
+
+  # A dwindling cosmos dreams new beings: below `min_population` living
+  # beings, the Heart of the Cosmos (or any place) brings forth a being of
+  # the commons every `dream_interval_ticks`, so the cosmos cannot die out.
+  defp dream(living, graph) do
+    floor = Application.get_env(:eldritch, :min_population, 8)
+    interval = Application.get_env(:eldritch, :dream_interval_ticks, 60)
+
+    if living < floor and map_size(graph) > 0 and rem(Eldritch.Simulation.tick_count(), interval) == 0 do
+      node =
+        Enum.find_value(graph, fn {id, n} -> if n["name"] == "The Heart of the Cosmos", do: id end) ||
+          graph |> Map.keys() |> Enum.random()
+
+      id =
+        Eldritch.Being.Builder.build({:new, :being, :standard}, %{
+          "at_node" => node,
+          "incantation" => Eldritch.KnowledgePack.random_incantation()
+        })
+
+      name = Cosmos.Entity.Cache.server_process(id) |> Cosmos.Entity.Server.value("name")
+
+      Eldritch.Chronicle.record(
+        :summon,
+        "The cosmos, dwindling, dreams a new being: #{name} wakes in #{graph[node]["name"]}.",
+        %{"beings" => [id], "node" => node}
+      )
+    end
+  end
+
+  # husks of faded commons beings crumble to dust after a while, so a cosmos
+  # that runs for weeks is not buried in them
+  defp crumble(beings) do
+    for being <- beings, Eldritch.Being.Life.crumbled?(being) do
+      Cosmos.Entity.Cache.stop(being["id"])
+      Cosmos.Database.delete(being["id"])
+    end
+
+    # husks faded before fading was timed get a time now
+    for %{"status" => "faded"} = being <- beings,
+        get_in(being, ["lineage", "faded_at"]) == nil do
+      Cosmos.Entity.Server.update_component(being["pid"], "lineage", fn comp ->
+        %{comp | value: Map.put(comp.value, "faded_at", Eldritch.Being.Life.now())}
+      end)
     end
   end
 
@@ -108,24 +168,43 @@ defmodule Eldritch.System.Volition do
   end
 
   # increments the being's age, returns true when it has outlived its lifespan
+  # true when the being is withering (old age, or an owner's neglect);
+  # the chronicle notes the moment it begins, once
   defp age(ctx) do
-    lineage = ctx.being["lineage"] || %{}
-    age = Map.get(lineage, "age", 0) + 1
-    lifespan = Map.get(lineage, "lifespan", Eldritch.Being.Builder.default_lifespan())
+    case Eldritch.Being.Life.condition(ctx.being) do
+      :vital ->
+        false
 
-    Cosmos.Entity.Server.update_component(ctx.pid, "lineage", fn comp ->
-      %{comp | value: Map.merge(comp.value, %{"age" => age, "lifespan" => lifespan})}
-    end)
+      {:withering, :age} ->
+        unless get_in(ctx.being, ["lineage", "elder_noted"]) do
+          Cosmos.Entity.Server.update_component(ctx.pid, "lineage", fn comp ->
+            %{comp | value: Map.put(comp.value, "elder_noted", true)}
+          end)
 
-    if age == lifespan do
-      Eldritch.Chronicle.record(
-        :elder,
-        "#{ctx.being["name"]} has grown ancient. Its substance begins to thin.",
-        %{"beings" => [ctx.id]}
-      )
+          Eldritch.Chronicle.record(
+            :elder,
+            "#{ctx.being["name"]} has grown ancient. Its substance begins to thin.",
+            %{"beings" => [ctx.id]}
+          )
+        end
+
+        true
+
+      {:withering, :neglect} ->
+        unless get_in(ctx.being, ["ownership", "neglect_noted"]) do
+          Cosmos.Entity.Server.update_component(ctx.pid, "ownership", fn comp ->
+            %{comp | value: Map.put(comp.value, "neglect_noted", true)}
+          end)
+
+          Eldritch.Chronicle.record(
+            :elder,
+            "#{ctx.being["name"]} has gone unanswered too long. Its substance begins to thin.",
+            %{"beings" => [ctx.id]}
+          )
+        end
+
+        true
     end
-
-    age > lifespan
   end
 
   defp think(ctx, {intent, thought}) do
