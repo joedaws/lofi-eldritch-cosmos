@@ -1,7 +1,7 @@
 # Deployment handoff: running the cosmos on the Hetzner server
 
-Status: **waiting on two decisions** (domain, how new versions get deployed).
-Everything else is planned and can be built as soon as those are made.
+Status: **waiting on one decision: the domain.** The deploy trigger is decided:
+**every push to `main` deploys** (option 2 below).
 
 ## What we found
 
@@ -57,7 +57,7 @@ Where should the cosmos live?
 Either way the steps are the same: a Cloudflare DNS record pointing at the server, an nginx
 site, and a certbot certificate. The domain becomes `PHX_HOST` and the address in login emails.
 
-## Decision 2: how new versions get to the server
+## Decision 2: how new versions get to the server (decided: option 2, push to `main`)
 
 systemd manages the running process in every option; the question is only how a new
 build arrives and when `systemctl restart lofi` happens.
@@ -76,9 +76,14 @@ build arrives and when `systemctl restart lofi` happens.
    Elixir/Erlang installed to build, and builds use the server's CPU while the wish list
    is running.
 
-Recommendation: **1**, since it matches the wish list and keeps the server free of build
-tools. If you would rather keep everything on the server under systemd, **3** works well
-too; it is a little more to set up once.
+**Decided: option 2.** Every push to `main` runs the tests and, only if they pass, builds
+the release on GitHub, rsyncs it to `/opt/lofi` and runs `systemctl restart lofi`.
+Things to keep in mind:
+
+- every merge to `main` goes live, so `main` should always be deployable
+- a failing test stops the deploy; the server keeps running the previous version
+- until the GitHub secrets (server IP, deploy key) are added, the deploy job is skipped
+  rather than failing, so pushing to `main` stays safe before the server is set up
 
 ## Once decided, what happens
 
@@ -89,7 +94,7 @@ I write, in this repo:
   `lofi-deploy.service` if option 3)
 - `infra/nginx/lofi.conf`, `infra/lofi.env.example`
 - `infra/RUNBOOK.md`: the one-time server steps in the same style as the wish list's guide
-- `.github/workflows/deploy.yml` (options 1 or 2)
+- `.github/workflows/deploy.yml` (on push to `main`)
 
 You do, once:
 
@@ -97,4 +102,4 @@ You do, once:
 - create a Resend account, verify the domain, and get an API key
 - run the runbook's server steps (create folders, install the units, add the nginx site,
   run certbot, fill in `/etc/lofi.env`)
-- add the GitHub secrets (options 1 and 2)
+- add the GitHub secrets (the server IP and deploy SSH key; the wish list's can be reused)

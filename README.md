@@ -237,8 +237,8 @@ optionally `PORT` and `DATABASE_PATH`, and a mail provider for login links (conf
   remembering, a dwindling cosmos dreams new beings, husks crumble
 - [ ] Ranks or roles, toward social organization
 - [ ] Deploy (one server, SQLite with backups) with a mail provider for login links:
-  planned beside the wish list on the Hetzner server under systemd, waiting on two
-  decisions; see [docs/deployment-handoff.md](docs/deployment-handoff.md)
+  planned beside the wish list on the Hetzner server under systemd, deploying on every
+  push to `main`; waiting on the domain. See [docs/deployment-handoff.md](docs/deployment-handoff.md)
 
 ## After launch
 
