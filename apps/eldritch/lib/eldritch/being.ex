@@ -85,7 +85,24 @@ defmodule Eldritch.Being do
       case result do
         {:ok, %{"correct" => correct, "ichor_gain" => gain} = res} ->
           # the owner's remembering is what keeps an owned being vital
-          if by != :system and by != nil and by == owner(vals), do: Eldritch.Being.Life.remembered(pid)
+          if by != :system and by != nil and by == owner(vals),
+            do: Eldritch.Being.Life.remembered(pid)
+
+          # the person's study record
+          if by != :system and by != nil do
+            Eldritch.History.record(by, being_id, :answer, %{
+              "being" => vals["name"],
+              "card_id" => res["card_id"],
+              "front" => res["front"],
+              "expected" => res["expected"],
+              "answer" => answer,
+              "correct" => correct,
+              "box_before" => res["box_before"],
+              "box_after" => res["box"],
+              "ichor_gain" => gain,
+              "revived" => correct and vals["status"] == "faded"
+            })
+          end
 
           ichor = if gain > 0, do: Actions.change_ichor(pid, gain), else: vals["ichor"]
           if correct and vals["status"] == "faded" and ichor > 0, do: revive(being_id, vals)
@@ -94,7 +111,8 @@ defmodule Eldritch.Being do
             :recall,
             if(correct,
               do: "#{vals["name"]}'s incantation was answered true. Ichor surges (+#{gain}).",
-              else: "#{vals["name"]}'s incantation was answered falsely. It returns to the first box."
+              else:
+                "#{vals["name"]}'s incantation was answered falsely. It returns to the first box."
             ),
             %{"beings" => [being_id]}
           )
@@ -161,6 +179,7 @@ defmodule Eldritch.Being do
       "beings" => [being_id],
       "node" => vals["at_node"]
     })
+
     mourn(being_id, vals)
   end
 
@@ -172,7 +191,11 @@ defmodule Eldritch.Being do
           pid = Cosmos.Entity.Cache.lookup(other_id),
           pid != nil,
           Cosmos.Entity.Server.value(pid, "status", "alive") != "faded" do
-        Eldritch.Lacan.update(pid, &Eldritch.Lacan.trauma(&1, vals["at_node"], "#{vals["name"]} faded"))
+        Eldritch.Lacan.update(
+          pid,
+          &Eldritch.Lacan.trauma(&1, vals["at_node"], "#{vals["name"]} faded")
+        )
+
         {other_id, Cosmos.Entity.Server.value(pid, "name")}
       end
 

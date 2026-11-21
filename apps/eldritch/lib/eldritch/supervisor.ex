@@ -4,6 +4,8 @@ defmodule Eldritch.Supervisor do
       [
         Eldritch.Node.NameGenerator,
         Eldritch.Being.NameGenerator,
+        # must come before the chronicle, which reloads its recent past from it
+        Eldritch.History,
         Eldritch.Chronicle,
         Eldritch.Simulation,
         # runs once after everything above is up

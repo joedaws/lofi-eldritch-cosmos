@@ -26,7 +26,10 @@ defmodule Eldritch.LacanTest do
 
     for _ <- 1..300 do
       {next, reason} =
-        Lacan.next_desire(psyche, "blood", %{other: %{"bone" => 9, "obsidian" => 3}, contiguous: ["sea_foam"]})
+        Lacan.next_desire(psyche, "blood", %{
+          other: %{"bone" => 9, "obsidian" => 3},
+          contiguous: ["sea_foam"]
+        })
 
       refute next in ["bone", "blood"]
       assert is_binary(reason)
@@ -85,7 +88,13 @@ defmodule Eldritch.LacanTest do
 
   test "anxiety: a being holding too much of its objet a casts it away" do
     n = Eldritch.Node.Builder.build({:new, :node}, %{"resource_type" => "papyrus"})
-    id = Eldritch.Being.Builder.build({:new, :being, :standard}, %{"at_node" => n, "desire" => "blood"})
+
+    id =
+      Eldritch.Being.Builder.build({:new, :being, :standard}, %{
+        "at_node" => n,
+        "desire" => "blood"
+      })
+
     set_psyche(id, &%{&1 | "objet_a" => "bone"})
     Eldritch.Being.Actions.give_resource(Cosmos.Entity.Cache.server_process(id), "bone", 12)
     Eldritch.Genesis.flush()
@@ -120,7 +129,11 @@ defmodule Eldritch.LacanTest do
     b = Eldritch.Node.Builder.build({:new, :node}, %{"resource_type" => "papyrus"})
     Eldritch.Node.Actions.connect_nodes(a, b)
 
-    mourner = Eldritch.Being.Builder.build({:new, :being, :standard}, %{"at_node" => b, "desire" => "blood"})
+    mourner =
+      Eldritch.Being.Builder.build({:new, :being, :standard}, %{
+        "at_node" => b,
+        "desire" => "blood"
+      })
 
     lost =
       Eldritch.Being.Builder.build({:new, :being, :standard}, %{

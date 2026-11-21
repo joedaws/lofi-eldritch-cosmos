@@ -143,7 +143,11 @@ defmodule Eldritch.Lacan do
 
   @doc "Attaining the object of desire: lack falls (never to nothing), jouissance surges"
   def attain(psyche) do
-    %{psyche | "lack" => max(10, psyche["lack"] - 45), "jouissance" => clamp(psyche["jouissance"] + 40)}
+    %{
+      psyche
+      | "lack" => max(10, psyche["lack"] - 45),
+        "jouissance" => clamp(psyche["jouissance"] + 40)
+    }
   end
 
   @doc "A demand answered: love, not satisfaction"
@@ -195,6 +199,7 @@ defmodule Eldritch.Lacan do
     max_other = other |> Map.values() |> Enum.max(fn -> 1 end) |> max(1)
     semblable = Map.get(context, :semblable_desire)
     contiguous = Map.get(context, :contiguous, [])
+
     # an owner's temperament: 1.0 is the commons; above follows the Other more, below its own chain
     conformity = Map.get(context, :conformity, 1.0)
     chain = psyche["chain"]
@@ -283,7 +288,11 @@ defmodule Eldritch.Lacan do
       end)
 
     # gifts are remembered for a while, then forgotten
-    gifts = lookup(:gifts, %{}) |> Map.new(fn {k, v} -> {k, v * 0.9} end) |> Map.reject(fn {_, v} -> v < 0.1 end)
+    gifts =
+      lookup(:gifts, %{})
+      |> Map.new(fn {k, v} -> {k, v * 0.9} end)
+      |> Map.reject(fn {_, v} -> v < 0.1 end)
+
     put(:gifts, gifts)
 
     Map.merge(desired, Map.new(gifts, fn {k, v} -> {k, v / 3} end), fn _, a, b -> a + b end)

@@ -54,8 +54,17 @@ defmodule Eldritch.OwnedTest do
 
   test "temperament is clamped and merged" do
     {:ok, _} = Owned.summon(1, %{})
-    assert {:ok, t} = Owned.set_temperament(1, %{"wanderlust" => 250, "sociability" => "10", "bogus" => 1})
-    assert t == %{"generosity" => 50, "wanderlust" => 100, "sociability" => 10, "conformity" => 50}
+
+    assert {:ok, t} =
+             Owned.set_temperament(1, %{"wanderlust" => 250, "sociability" => "10", "bogus" => 1})
+
+    assert t == %{
+             "generosity" => 50,
+             "wanderlust" => 100,
+             "sociability" => 10,
+             "conformity" => 50
+           }
+
     assert Owned.set_temperament(99, %{}) == {:error, :no_being}
   end
 
@@ -74,7 +83,9 @@ defmodule Eldritch.OwnedTest do
 
   test "a deck whispers one card at a time" do
     {:ok, id} =
-      Owned.summon(1, %{"cards" => [%{"front" => "a", "back" => "1"}, %{"front" => "b", "back" => "2"}]})
+      Owned.summon(1, %{
+        "cards" => [%{"front" => "a", "back" => "1"}, %{"front" => "b", "back" => "2"}]
+      })
 
     make_due(id)
     deck = vals(id)["deck"]
@@ -93,7 +104,11 @@ defmodule Eldritch.OwnedTest do
     assert Eldritch.Being.recall(id, "Lima", nil) == {:error, :not_yours}
     assert {:ok, %{"correct" => true}} = Eldritch.Being.recall(id, " lima ", 1)
 
-    commons = Eldritch.Being.Builder.build({:new, :being, :standard}, %{"incantation" => %{"front" => "x", "back" => "y"}})
+    commons =
+      Eldritch.Being.Builder.build({:new, :being, :standard}, %{
+        "incantation" => %{"front" => "x", "back" => "y"}
+      })
+
     make_due(commons)
     assert Eldritch.Being.recall(commons, "y", nil) == {:error, :not_yours}
     assert {:ok, _} = Eldritch.Being.recall(commons, "y", 2)
@@ -113,7 +128,10 @@ defmodule Eldritch.OwnedTest do
 
   test "the world view hides an owner's cards from others, and the objet a until anxiety" do
     {:ok, id} = Owned.summon(1, %{"cards" => [%{"front" => "secret", "back" => "s"}]})
-    view = fn viewer -> Enum.find(Eldritch.World.snapshot(viewer: viewer)["beings"], &(&1["id"] == id)) end
+
+    view = fn viewer ->
+      Enum.find(Eldritch.World.snapshot(viewer: viewer)["beings"], &(&1["id"] == id))
+    end
 
     mine = view.(1)
     assert mine["mine"] and mine["can_answer"]
@@ -138,8 +156,20 @@ defmodule Eldritch.OwnedTest do
 
   test "a being without generosity never gives" do
     [n | _] = Eldritch.query("nodes")["node_ids"]
-    holder = Eldritch.Being.Builder.build({:new, :being, :standard}, %{"at_node" => n, "desire" => "bone", "temperament" => %{"generosity" => 0}})
-    asker = Eldritch.Being.Builder.build({:new, :being, :standard}, %{"at_node" => n, "desire" => "blood"})
+
+    holder =
+      Eldritch.Being.Builder.build({:new, :being, :standard}, %{
+        "at_node" => n,
+        "desire" => "bone",
+        "temperament" => %{"generosity" => 0}
+      })
+
+    asker =
+      Eldritch.Being.Builder.build({:new, :being, :standard}, %{
+        "at_node" => n,
+        "desire" => "blood"
+      })
+
     Eldritch.Being.Actions.give_resource(Cosmos.Entity.Cache.server_process(holder), "blood", 5)
     Eldritch.Genesis.flush()
 
@@ -150,7 +180,13 @@ defmodule Eldritch.OwnedTest do
   end
 
   test "temperament 50 is the commons default" do
-    assert Temperament.new() == %{"generosity" => 50, "wanderlust" => 50, "sociability" => 50, "conformity" => 50}
+    assert Temperament.new() == %{
+             "generosity" => 50,
+             "wanderlust" => 50,
+             "sociability" => 50,
+             "conformity" => 50
+           }
+
     assert Temperament.factor(%{}, "generosity") == 1.0
   end
 
@@ -165,7 +201,11 @@ defmodule Eldritch.OwnedTest do
 
     Cosmos.Entity.Server.add_component(
       pid,
-      %Cosmos.Entity.Component{name: "incantation", system: Eldritch.System.Remind, value: %{"front" => "old", "back" => "card"}}
+      %Cosmos.Entity.Component{
+        name: "incantation",
+        system: Eldritch.System.Remind,
+        value: %{"front" => "old", "back" => "card"}
+      }
     )
 
     Eldritch.Genesis.flush()

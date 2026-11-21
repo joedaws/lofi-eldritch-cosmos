@@ -55,6 +55,7 @@ defmodule Eldritch.Being.Actions.ShiftDesire do
       %{"beings" => [ctx.id]}
     )
 
-    {"yearn", "#{String.capitalize(pretty(old))} was not it. I long for #{pretty(new)}, because #{reason}."}
+    {"yearn",
+     "#{String.capitalize(pretty(old))} was not it. I long for #{pretty(new)}, because #{reason}."}
   end
 end

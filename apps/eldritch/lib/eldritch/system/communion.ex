@@ -212,10 +212,10 @@ defmodule Eldritch.System.Communion do
       if :rand.uniform() < 0.25,
         do:
           Chronicle.record(
-        :succor,
-        "#{giver["name"]} shares its ichor with the fading #{receiver["name"]}.",
-        %{"beings" => [giver["id"], receiver["id"]], "node" => giver["at_node"]}
-      )
+            :succor,
+            "#{giver["name"]} shares its ichor with the fading #{receiver["name"]}.",
+            %{"beings" => [giver["id"], receiver["id"]], "node" => giver["at_node"]}
+          )
     end
   end
 
@@ -255,7 +255,9 @@ defmodule Eldritch.System.Communion do
 
       bond_id(a, child_id, 15)
       bond_id(b, child_id, 15)
-      child_name = Cosmos.Entity.Cache.server_process(child_id) |> Cosmos.Entity.Server.value("name")
+
+      child_name =
+        Cosmos.Entity.Cache.server_process(child_id) |> Cosmos.Entity.Server.value("name")
 
       Chronicle.record(
         :summon,

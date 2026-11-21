@@ -122,6 +122,8 @@ defmodule Eldritch.Being.Deck do
 
         result = %{
           "card_id" => card["id"],
+          "front" => card["front"],
+          "box_before" => card["box"],
           "correct" => correct,
           "expected" => card["back"],
           "ichor_gain" => if(correct, do: Incantation.reward(card), else: 0),

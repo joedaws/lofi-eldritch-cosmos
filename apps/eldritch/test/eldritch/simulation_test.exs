@@ -190,16 +190,28 @@ defmodule Eldritch.SimulationTest do
 
     make_due.()
     ichor = vals(being)["ichor"]
-    assert {:ok, %{"correct" => true, "box" => 2, "ichor_gain" => 15}} = Eldritch.Being.recall(being, " 56 ")
+
+    assert {:ok, %{"correct" => true, "box" => 2, "ichor_gain" => 15}} =
+             Eldritch.Being.recall(being, " 56 ")
+
     assert vals(being)["ichor"] == ichor + 15
 
     make_due.()
-    assert {:ok, %{"correct" => false, "box" => 1, "expected" => "56"}} = Eldritch.Being.recall(being, "54")
+
+    assert {:ok, %{"correct" => false, "box" => 1, "expected" => "56"}} =
+             Eldritch.Being.recall(being, "54")
   end
 
   test "a correct recall calls a faded being back" do
     n = node!()
-    being = being!(%{"at_node" => n, "ichor" => 0, "incantation" => %{"front" => "Breathe", "back" => ""}})
+
+    being =
+      being!(%{
+        "at_node" => n,
+        "ichor" => 0,
+        "incantation" => %{"front" => "Breathe", "back" => ""}
+      })
+
     Eldritch.System.Volition.update_components(Eldritch.System.Volition)
     assert vals(being)["status"] == "faded"
 

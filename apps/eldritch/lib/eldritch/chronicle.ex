@@ -1,14 +1,23 @@
 defmodule Eldritch.Chronicle do
   @moduledoc """
-  A bounded, in-memory log of noteworthy happenings in the cosmos
-  (meetings, gifts, summonings, fadings, whispered incantations ...).
+  The log of noteworthy happenings in the cosmos (meetings, gifts,
+  summonings, fadings, whispered incantations ...).
+
+  The most recent events are kept in memory for the page; every event is
+  also written to `Eldritch.History`, from which the recent ones are
+  reloaded when the cosmos starts.
   """
   use Agent
 
   @max_events 300
 
   def start_link(_) do
-    Agent.start_link(fn -> %{seq: 0, events: []} end, name: __MODULE__)
+    Agent.start_link(
+      fn ->
+        %{seq: Eldritch.History.max_seq(), events: Eldritch.History.recent_chronicle(@max_events)}
+      end,
+      name: __MODULE__
+    )
   end
 
   @doc """
@@ -26,6 +35,7 @@ defmodule Eldritch.Chronicle do
           "tick" => Eldritch.Simulation.tick_count()
         })
 
+      Eldritch.History.append_chronicle(event)
       %{seq: seq + 1, events: Enum.take([event | events], @max_events)}
     end)
   end
@@ -43,6 +53,7 @@ defmodule Eldritch.Chronicle do
   end
 
   def clear() do
+    Eldritch.History.clear_chronicle()
     Agent.update(__MODULE__, fn state -> %{state | events: []} end)
   end
 end

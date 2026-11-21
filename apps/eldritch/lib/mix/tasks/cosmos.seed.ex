@@ -60,7 +60,10 @@ defmodule Mix.Tasks.Cosmos.Seed do
     %{"node_ids" => nodes, "being_ids" => beings} = Eldritch.Genesis.seed(seed_opts)
     Eldritch.Genesis.flush()
     Mix.shell().info("Created #{length(nodes)} nodes and #{length(beings)} beings.")
-    Mix.shell().info("Start the simulation with: mix run --no-halt  (then open http://localhost:5454)")
+
+    Mix.shell().info(
+      "Start the simulation with: mix run --no-halt  (then open http://localhost:5454)"
+    )
   end
 
   defp parse_rings(rings) do

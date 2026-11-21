@@ -27,7 +27,11 @@ defmodule Eldritch.LifeTest do
   end
 
   test "commons beings age on the clock, not by ticks" do
-    id = Eldritch.Being.Builder.build({:new, :being, :standard}, %{"lineage" => %{"lifespan_ms" => @day}})
+    id =
+      Eldritch.Being.Builder.build({:new, :being, :standard}, %{
+        "lineage" => %{"lifespan_ms" => @day}
+      })
+
     assert Life.condition(vals(id)) == :vital
 
     for _ <- 1..50, do: volition!()
@@ -90,7 +94,11 @@ defmodule Eldritch.LifeTest do
     volition!()
 
     [id] = Eldritch.Being.all_ids()
-    heart = Enum.find(Entities.node_map(), fn {_, n} -> n["name"] == "The Heart of the Cosmos" end) |> elem(0)
+
+    heart =
+      Enum.find(Entities.node_map(), fn {_, n} -> n["name"] == "The Heart of the Cosmos" end)
+      |> elem(0)
+
     assert vals(id)["at_node"] == heart
     assert Enum.any?(Eldritch.Chronicle.recent(5), &(&1["text"] =~ "dreams a new being"))
   end

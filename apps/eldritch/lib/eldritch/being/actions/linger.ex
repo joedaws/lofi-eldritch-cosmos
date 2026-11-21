@@ -11,8 +11,11 @@ defmodule Eldritch.Being.Actions.Linger do
     restless = max(0, Eldritch.Being.Temperament.trait(ctx.being, "wanderlust") - 50) / 100
 
     case here(ctx) do
-      nil -> false
-      node -> node["resource_type"] == desire(ctx) and reserve(node) > 0 and :rand.uniform() >= restless
+      nil ->
+        false
+
+      node ->
+        node["resource_type"] == desire(ctx) and reserve(node) > 0 and :rand.uniform() >= restless
     end
   end
 

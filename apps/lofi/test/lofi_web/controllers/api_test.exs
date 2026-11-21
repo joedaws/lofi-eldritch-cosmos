@@ -5,6 +5,8 @@ defmodule LofiWeb.ApiTest do
   import Lofi.AccountsFixtures
 
   setup do
+    # account ids are reused between tests (the accounts db rolls back); history is not
+    Eldritch.History.reset()
     Eldritch.Genesis.reset()
     Eldritch.Landscape.generate(rings: [2, 4])
     Eldritch.Genesis.flush()
@@ -124,5 +126,48 @@ defmodule LofiWeb.ApiTest do
              |> json_response(200)
 
     assert %{"being_id" => _} = keeper |> post(~p"/being", %{"name" => "Commoner"}) |> json_response(200)
+  end
+
+  test "a person reads and downloads their own history, and only theirs", %{conn: conn} do
+    user = user_fixture()
+    conn = log_in(conn, user)
+
+    %{"being_id" => id} =
+      conn
+      |> post(~p"/api/my/being", %{"cards" => [%{"front" => "capital of Peru", "back" => "Lima"}]})
+      |> json_response(201)
+
+    conn |> post(~p"/api/my/cards", %{"front" => "7 × 8", "back" => "56"}) |> json_response(201)
+
+    # make the first card due and answer it, wrongly
+    Eldritch.Genesis.flush()
+
+    Cosmos.Entity.Server.update_component(Cosmos.Entity.Cache.server_process(id), "deck", fn c ->
+      %{c | value: %{"cards" => Enum.map(c.value["cards"], &%{&1 | "due_at" => 0})}}
+    end)
+
+    Eldritch.System.Remind.update_components(Eldritch.System.Remind)
+    Eldritch.Genesis.flush()
+    assert %{"correct" => false} = conn |> post(~p"/being/recall", %{"id" => id, "answer" => "Cusco"}) |> json_response(200)
+
+    history = conn |> get(~p"/api/my/history") |> json_response(200)
+    assert [%{"kind" => "answer"}, %{"kind" => "card_added"}, %{"kind" => "summoned"}] = history["interactions"]
+    assert [%{"front" => "capital of Peru", "answers" => 1, "right" => 0}] = history["cards"]
+    assert Enum.any?(history["being_events"], &(&1["text"] =~ "is summoned"))
+
+    export = conn |> get(~p"/api/my/history/export")
+    assert response(export, 200)
+    assert get_resp_header(export, "content-disposition") |> hd() =~ "attachment"
+    lines = export.resp_body |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+    assert Enum.any?(lines, &(&1["type"] == "interaction" and &1["kind"] == "answer" and &1["data"]["answer"] == "Cusco"))
+    assert Enum.any?(lines, &(&1["type"] == "event"))
+
+    # someone else sees none of it
+    other = log_in(build_conn(), user_fixture())
+    assert %{"interactions" => [], "cards" => []} = other |> get(~p"/api/my/history") |> json_response(200)
+    assert other |> get(~p"/api/my/history/export") |> response(200) == ""
+
+    # and the anonymous cannot ask
+    assert build_conn() |> get(~p"/api/my/history") |> json_response(401)
   end
 end

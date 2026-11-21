@@ -113,7 +113,10 @@ defmodule Eldritch.Being.Life do
   @doc "Records that the owner answered: the grace period starts over"
   def remembered(being_server) do
     Cosmos.Entity.Server.update_component(being_server, "ownership", fn comp ->
-      %{comp | value: comp.value |> Map.put("last_answer_at", now()) |> Map.delete("neglect_noted")}
+      %{
+        comp
+        | value: comp.value |> Map.put("last_answer_at", now()) |> Map.delete("neglect_noted")
+      }
     end)
   end
 end

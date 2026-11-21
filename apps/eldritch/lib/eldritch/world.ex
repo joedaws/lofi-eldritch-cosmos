@@ -113,7 +113,8 @@ defmodule Eldritch.World do
       "mine" => signed_in and owner == viewer,
       "can_answer" => can_answer,
       "deck_size" => length(deck["cards"]),
-      "beckon_wait_ms" => if(signed_in and owner == viewer, do: Eldritch.Being.Owned.beckon_wait(b), else: nil),
+      "beckon_wait_ms" =>
+        if(signed_in and owner == viewer, do: Eldritch.Being.Owned.beckon_wait(b), else: nil),
       "incantation" => %{
         # a card belongs to its owner: its words show only to whoever may answer it
         "front" => if(can_answer or owner == nil, do: card["front"], else: nil),

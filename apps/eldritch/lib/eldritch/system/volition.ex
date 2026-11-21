@@ -103,7 +103,8 @@ defmodule Eldritch.System.Volition do
     floor = Application.get_env(:eldritch, :min_population, 8)
     interval = Application.get_env(:eldritch, :dream_interval_ticks, 60)
 
-    if living < floor and map_size(graph) > 0 and rem(Eldritch.Simulation.tick_count(), interval) == 0 do
+    if living < floor and map_size(graph) > 0 and
+         rem(Eldritch.Simulation.tick_count(), interval) == 0 do
       node =
         Enum.find_value(graph, fn {id, n} -> if n["name"] == "The Heart of the Cosmos", do: id end) ||
           graph |> Map.keys() |> Enum.random()

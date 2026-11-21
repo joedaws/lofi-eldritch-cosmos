@@ -30,6 +30,7 @@ defmodule Eldritch.Carte.Builder do
       entity_server,
       Cosmos.Entity.Component.new("query", :attribute, query)
     )
+
     Cosmos.Entity.Server.add_component(
       entity_server,
       Cosmos.Entity.Component.new("response", :attribute, response)

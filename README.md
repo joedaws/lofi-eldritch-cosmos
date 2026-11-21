@@ -63,6 +63,13 @@ Each person may summon **one being** (the **My being** tab):
   ichor runs low it endures. Leave it unanswered longer and it withers and fades; one
   answer calls it back. Faded owned beings never crumble away.
 
+- Your **journal** (in *My being*) shows your recent answers and changes, how well you
+  remember each card (weakest first) and what befell your being. **Download my whole
+  history** gives everything as JSON Lines: one object per line, either an `interaction`
+  (`answer`, `summoned`, `card_added`, `card_rewritten`, `card_burned`, `temperament`,
+  `beckon`, with its data) or an `event` from the chronicle about a being you owned or tended.
+  Nobody else can read your history.
+
 Beings nobody owns (the seeded ones and their children) are **the commons**: anyone signed
 in may answer their whispers.
 
@@ -157,6 +164,11 @@ Noteworthy happenings are written to the **chronicle** (`Eldritch.Chronicle`) sh
 
 ## Persistence
 
+History lives in `history.sqlite3` (`Eldritch.History`): the whole chronicle (so the cosmos
+remembers its past across restarts; events older than 30 days are pruned,
+`:chronicle_retention_ms`), indexed by the beings each event involves, and every person's
+interactions. Unmaking the cosmos clears the chronicle but keeps people's study records.
+
 Accounts live in their own SQLite database, `accounts.sqlite3`, next to the cosmos
 (migrations run automatically on start; `DATABASE_PATH` overrides its location).
 
@@ -188,6 +200,8 @@ Writes use the browser session and need the CSRF token from `GET /api/me`
 | `POST /api/my/being` | signed in | `name`, `at_node`, `cards: [{front, back}]`, `temperament` | summon your one being |
 | `PUT /api/my/temperament` | signed in | `generosity`, `wanderlust`, `sociability`, `conformity` | |
 | `POST /api/my/cards` · `PUT`/`DELETE /api/my/cards/:id` | signed in | `front`, `back` | edit your deck |
+| `GET /api/my/history` | signed in | `limit`, `before` | your recent interactions, accuracy per card, your being's events |
+| `GET /api/my/history/export` | signed in | | your whole history as JSON Lines |
 | `POST /being/recall` | owner (or anyone, for the commons) | `id`, `answer` | answer a whisper (409 if none) |
 | `POST /being/beckon` | owner (hourly) · keeper | `id`, `node_id` | 429 while cooling down |
 | `POST /being`, `POST /being/incantation` | keeper | | beings of the commons |
@@ -216,7 +230,9 @@ optionally `PORT` and `DATABASE_PATH`, and a mail provider for login links (conf
 ## Next: opening the cosmos to people
 
 - [ ] Push live changes to the page (Phoenix Channels) for the region in view, instead of polling
-- [ ] Store the chronicle so history survives restarts
+- [x] Store the chronicle so history survives restarts
+- [x] Keep each person's history (every answer, card edit, temperament change, beckon),
+  with a journal and a JSON Lines download
 - [x] Lives on the clock: commons beings live days, owned beings live by their owner's
   remembering, a dwindling cosmos dreams new beings, husks crumble
 - [ ] Ranks or roles, toward social organization
@@ -230,12 +246,12 @@ optionally `PORT` and `DATABASE_PATH`, and a mail provider for login links (conf
   - What to export: every answer to an incantation (card, answer given, right or wrong,
     box before and after, time), card edits, temperament changes, beckons, and chronicle
     events about their being (fading, revival, gifts, mourning).
-  - Prerequisite: keep a per-person history of these interactions. Today the deck only keeps
-    counters (box, streak, recalls), not each answer.
-  - Ways to hand it over, simplest first: a JSON Lines download; a personal, revocable
+  - Done: the per-person history (`Eldritch.History`) and a JSON Lines download.
+  - Ways to hand it over next: a personal, revocable
     API token for a read-only feed the agent polls; webhooks pushed to the agent; an MCP
     server so agents can ask questions like "which cards did I miss this week?"
   - Only the owner can export their own history, and tokens can be revoked at any time.
+  - When account deletion is added, it must call `Eldritch.History.forget/1`.
 
 # Starting the Cosmos ECS application
 

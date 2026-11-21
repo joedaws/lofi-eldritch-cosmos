@@ -36,8 +36,11 @@ defmodule Eldritch.Being.Action do
     node_id = node_id || ctx.being["at_node"]
 
     case Map.get(ctx.graph, node_id) do
-      nil -> []
-      node -> node |> Map.get("neighbors", MapSet.new()) |> Enum.filter(&Map.has_key?(ctx.graph, &1))
+      nil ->
+        []
+
+      node ->
+        node |> Map.get("neighbors", MapSet.new()) |> Enum.filter(&Map.has_key?(ctx.graph, &1))
     end
   end
 
@@ -74,7 +77,9 @@ defmodule Eldritch.Being.Action do
             ctx
             |> neighbors(node)
             |> Enum.reject(&Map.has_key?(parents, &1))
-            |> Enum.reduce({rest, parents}, fn n, {q, p} -> {:queue.in(n, q), Map.put(p, n, node)} end)
+            |> Enum.reduce({rest, parents}, fn n, {q, p} ->
+              {:queue.in(n, q), Map.put(p, n, node)}
+            end)
 
           bfs(ctx, queue, parents, targets, origin)
         end

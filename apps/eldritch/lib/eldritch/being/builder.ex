@@ -45,6 +45,7 @@ defmodule Eldritch.Being.Builder do
     at_node(entity_server, nil)
     # a new being does not start with observations, so no override is provided
     observations(entity_server)
+
     deck(
       entity_server,
       Map.get_lazy(attributes, "deck", fn ->
@@ -57,11 +58,22 @@ defmodule Eldritch.Being.Builder do
 
     # desire is never directly for the objet a, the cause of desire
     psyche = Eldritch.Lacan.new(Map.get(attributes, "psyche", %{}))
-    desire = Map.get_lazy(attributes, "desire", fn -> Eldritch.Lacan.initial_desire(psyche["objet_a"]) end)
+
+    desire =
+      Map.get_lazy(attributes, "desire", fn ->
+        Eldritch.Lacan.initial_desire(psyche["objet_a"])
+      end)
 
     psyche =
       if desire == psyche["objet_a"],
-        do: Eldritch.Lacan.new(Map.put(Map.get(attributes, "psyche", %{}), "objet_a", Eldritch.Lacan.initial_desire(desire))),
+        do:
+          Eldritch.Lacan.new(
+            Map.put(
+              Map.get(attributes, "psyche", %{}),
+              "objet_a",
+              Eldritch.Lacan.initial_desire(desire)
+            )
+          ),
         else: psyche
 
     volition(entity_server, desire)
@@ -119,7 +131,9 @@ defmodule Eldritch.Being.Builder do
     unless has?.("bonds"), do: bonds(entity_server, %{})
 
     unless has?.("psyche") do
-      desire = get_in(Cosmos.Entity.component(entity, "volition") || %{}, [Access.key(:value), "desire"])
+      desire =
+        get_in(Cosmos.Entity.component(entity, "volition") || %{}, [Access.key(:value), "desire"])
+
       psyche = Eldritch.Lacan.new()
 
       psyche =
@@ -147,7 +161,10 @@ defmodule Eldritch.Being.Builder do
         known = Map.new(old, fn {node_id, resource} -> {node_id, resource} end)
 
         Cosmos.Entity.Server.update_component(entity_server, "observations", fn comp ->
-          %{comp | value: %{"nodes" => known, "visited" => Map.new(known, fn {k, _} -> {k, true} end)}}
+          %{
+            comp
+            | value: %{"nodes" => known, "visited" => Map.new(known, fn {k, _} -> {k, true} end)}
+          }
         end)
 
       _ ->

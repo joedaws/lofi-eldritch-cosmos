@@ -88,7 +88,16 @@ defmodule Mix.Tasks.Cosmos.Replay do
         }
       end)
 
-    acc = %{beings: [], being_index: %{}, strings: [], string_index: %{}, frames: [], events: [], seq: 0}
+    acc = %{
+      beings: [],
+      being_index: %{},
+      strings: [],
+      string_index: %{},
+      frames: [],
+      events: [],
+      seq: 0
+    }
+
     acc = record_frame(acc, 0, node_ids, node_index, true)
 
     acc =
@@ -135,7 +144,9 @@ defmodule Mix.Tasks.Cosmos.Replay do
     page =
       Application.app_dir(:lofi, "priv/static/index.html")
       |> File.read!()
-      |> String.replace(~s(<html lang="en">), ~s(<html lang="en" data-replay="replay.json">), global: false)
+      |> String.replace(~s(<html lang="en">), ~s(<html lang="en" data-replay="replay.json">),
+        global: false
+      )
 
     File.write!(Path.join(out, "index.html"), page)
 
@@ -233,7 +244,12 @@ defmodule Mix.Tasks.Cosmos.Replay do
         psyche = Eldritch.Lacan.normalize(b["psyche"])
         regs = psyche["registers"]
         {acc, knot} = intern_or_none(acc, psyche["knot"])
-        {acc, ident} = if psyche["identification"], do: being_index_id(acc, psyche["identification"]), else: {acc, -1}
+
+        {acc, ident} =
+          if psyche["identification"],
+            do: being_index_id(acc, psyche["identification"]),
+            else: {acc, -1}
+
         symptom = psyche["symptom"]
         symptom_node = if symptom, do: Map.get(node_index, symptom["node"], -1), else: -1
         {acc, cause} = intern_or_none(acc, symptom && symptom["cause"])
@@ -317,7 +333,9 @@ defmodule Mix.Tasks.Cosmos.Replay do
         }
 
         i = map_size(acc.being_index)
-        {%{acc | beings: [info | acc.beings], being_index: Map.put(acc.being_index, b["id"], i)}, i}
+
+        {%{acc | beings: [info | acc.beings], being_index: Map.put(acc.being_index, b["id"], i)},
+         i}
     end
   end
 

@@ -48,12 +48,21 @@ defmodule Eldritch.Being.Owned do
           "ichor" => 120
         })
 
-      node_name = Cosmos.Entity.Cache.server_process(at_node) |> Cosmos.Entity.Server.value("name")
+      node_name =
+        Cosmos.Entity.Cache.server_process(at_node) |> Cosmos.Entity.Server.value("name")
+
       by = if attrs["owner_name"], do: " by #{attrs["owner_name"]}", else: ""
 
       Eldritch.Chronicle.record(:summon, "#{name} is summoned into #{node_name}#{by}.", %{
         "beings" => [id],
         "node" => at_node
+      })
+
+      Eldritch.History.record(owner, id, :summoned, %{
+        "being" => name,
+        "place" => node_name,
+        "cards" => cards,
+        "temperament" => Temperament.new(attrs["temperament"] || %{})
       })
 
       {:ok, id}
@@ -66,20 +75,72 @@ defmodule Eldritch.Being.Owned do
         %{comp | value: Temperament.update(comp.value, changes)}
       end)
 
-      {:ok, Temperament.update(vals["temperament"], changes)}
+      before = Temperament.new(vals["temperament"] || %{})
+      now = Temperament.update(vals["temperament"], changes)
+
+      Eldritch.History.record(owner, vals["id"], :temperament, %{
+        "before" => before,
+        "after" => now
+      })
+
+      {:ok, now}
     end)
   end
 
   def add_card(owner, front, back) do
-    change_deck(owner, &Deck.add(&1, front, back))
+    with {:ok, card} = ok <- change_deck(owner, &Deck.add(&1, front, back)) do
+      log_card(owner, :card_added, %{
+        "card_id" => card["id"],
+        "front" => card["front"],
+        "back" => card["back"]
+      })
+
+      ok
+    end
   end
 
   def update_card(owner, card_id, front, back) do
-    change_deck(owner, &Deck.update(&1, card_id, front, back))
+    old = find_card(owner, card_id)
+
+    with {:ok, _} = ok <- change_deck(owner, &Deck.update(&1, card_id, front, back)) do
+      log_card(owner, :card_rewritten, %{
+        "card_id" => card_id,
+        "before" => old && Map.take(old, ["front", "back", "box"]),
+        "after" => %{"front" => front, "back" => back || ""}
+      })
+
+      ok
+    end
   end
 
   def delete_card(owner, card_id) do
-    change_deck(owner, &Deck.delete(&1, card_id))
+    old = find_card(owner, card_id)
+
+    with {:ok, _} = ok <- change_deck(owner, &Deck.delete(&1, card_id)) do
+      log_card(owner, :card_burned, %{
+        "card_id" => card_id,
+        "card" => old && Map.take(old, ["front", "back", "box"])
+      })
+
+      ok
+    end
+  end
+
+  defp find_card(owner, card_id) do
+    case being_of(owner) do
+      nil -> nil
+      vals -> Enum.find(Deck.cards(vals["deck"]), &(&1["id"] == card_id))
+    end
+  end
+
+  defp log_card(owner, kind, data) do
+    case being_of(owner) do
+      nil ->
+        :ok
+
+      vals ->
+        Eldritch.History.record(owner, vals["id"], kind, Map.put(data, "being", vals["name"]))
+    end
   end
 
   @doc """
@@ -98,6 +159,14 @@ defmodule Eldritch.Being.Owned do
           Cosmos.Entity.Server.update_component(pid, "ownership", fn comp ->
             %{comp | value: Map.put(comp.value, "beckoned_at", now())}
           end)
+
+          place =
+            Cosmos.Entity.Cache.server_process(node_id) |> Cosmos.Entity.Server.value("name")
+
+          Eldritch.History.record(owner, vals["id"], :beckon, %{
+            "being" => vals["name"],
+            "place" => place
+          })
 
           :ok
         end

@@ -62,6 +62,9 @@ defmodule LofiWeb.Router do
     post "/api/my/cards", MyBeingController, :add_card
     put "/api/my/cards/:card_id", MyBeingController, :update_card
     delete "/api/my/cards/:card_id", MyBeingController, :delete_card
+
+    get "/api/my/history", HistoryController, :show
+    get "/api/my/history/export", HistoryController, :export
   end
 
   # Only the admin runs the cosmos itself
