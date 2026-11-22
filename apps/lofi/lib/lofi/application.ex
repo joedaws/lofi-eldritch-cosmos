@@ -14,6 +14,8 @@ defmodule Lofi.Application do
        repos: Application.fetch_env!(:lofi, :ecto_repos),
        skip: not Application.get_env(:lofi, :migrate_on_start, true)},
       {Phoenix.PubSub, name: Lofi.PubSub},
+      # one world snapshot per tick for every open page
+      LofiWeb.WorldBroadcaster,
       LofiWeb.Endpoint
     ]
 

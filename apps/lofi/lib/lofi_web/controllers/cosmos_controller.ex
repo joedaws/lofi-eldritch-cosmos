@@ -9,10 +9,7 @@ defmodule LofiWeb.CosmosController do
 
   # The whole cosmos as the viewer may see it, plus chronicle events after `since`
   def world(conn, params) do
-    world =
-      Eldritch.World.snapshot(since: parse_int(params["since"], 0), viewer: user_id(conn))
-
-    json(conn, with_owner_names(world))
+    json(conn, LofiWeb.WorldView.for_viewer(user_id(conn), since: parse_int(params["since"], 0)))
   end
 
   def beings(conn, _params), do: json(conn, Eldritch.query("beings"))
@@ -87,16 +84,4 @@ defmodule LofiWeb.CosmosController do
     json(conn, %{"removed" => Eldritch.Genesis.reset()})
   end
 
-  # Eldritch knows owners only by id; people see display names
-  defp with_owner_names(world) do
-    ids = world["beings"] |> Enum.map(& &1["owner_id"]) |> Enum.reject(&is_nil/1) |> Enum.uniq()
-    names = Map.new(Lofi.Accounts.get_users(ids), &{&1.id, &1.display_name})
-
-    beings =
-      Enum.map(world["beings"], fn b ->
-        b |> Map.put("owner", names[b["owner_id"]]) |> Map.delete("owner_id")
-      end)
-
-    %{world | "beings" => beings}
-  end
 end

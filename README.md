@@ -18,7 +18,7 @@ The toolchain is pinned in `.mise.toml` (Elixir 1.18, Erlang/OTP 27).
 ```bash
 mix deps.get
 mix cosmos.seed            # dream a landscape and awaken beings (asks before wiping old data)
-mix run --no-halt          # start the cosmos and the lofi server
+mix phx.server             # start the cosmos and the web server (mix run --no-halt works too)
 ```
 
 Then open **http://localhost:5454**. Anyone can watch; to take part,
@@ -186,6 +186,14 @@ decode as entities are touched). Beings saved with a single incantation get a de
 Rough capacity (4 cores, 1s tick): ~2,000 beings. Births stop at `config :eldritch, :max_population`
 (default 40). Above a few hundred beings the browser's `/world` poll gets large (~0.8 KB per being).
 
+## Live updates
+
+The page connects to `/socket` and joins the `world` channel (`LofiWeb.WorldChannel`).
+`LofiWeb.WorldBroadcaster` builds one world snapshot per tick, only while someone is
+watching, and each channel tailors it to its viewer (their being, their cards, what they
+may answer) before pushing it; messages are compressed. If no push arrives for 3 seconds
+the page falls back to polling `GET /world`.
+
 ## HTTP API
 
 Writes use the browser session and need the CSRF token from `GET /api/me`
@@ -234,7 +242,9 @@ Production settings (in `/etc/lofi.env`, see `infra/lofi.env.example`): `SECRET_
 
 ## Next: opening the cosmos to people
 
-- [ ] Push live changes to the page (Phoenix Channels) for the region in view, instead of polling
+- [x] Push live changes to the page (Phoenix Channels): one world snapshot per tick for all
+  viewers, tailored per viewer, compressed; polling only as a fallback
+- [ ] Send each viewer only the region in view, and only what changed (for large cosmoses)
 - [x] Store the chronicle so history survives restarts
 - [x] Keep each person's history (every answer, card edit, temperament change, beckon),
   with a journal and a JSON Lines download

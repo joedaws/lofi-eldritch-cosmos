@@ -7,7 +7,9 @@ defmodule LofiEldritchCosmos.MixProject do
       version: "0.1.0",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      releases: releases()
+      releases: releases(),
+      # lets Phoenix reload code in development (mix phx.server / mix run)
+      listeners: [Phoenix.CodeReloader]
     ]
   end
 

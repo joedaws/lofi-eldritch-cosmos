@@ -321,6 +321,32 @@
       : `<b>Watching</b><a href="/users/register">Register</a><a href="/users/log-in">Log in</a>`);
   }
 
+  // ---------- live updates ----------
+  // The server pushes the world over a Phoenix channel once per tick; polling
+  // is only the fallback when the live connection is down.
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const el = document.createElement("script");
+      el.src = src; el.onload = resolve; el.onerror = reject;
+      document.head.appendChild(el);
+    });
+  }
+
+  async function connectLive() {
+    if (replay) return;
+    try { if (!window.Phoenix) await loadScript("/vendor/phoenix/phoenix.min.js"); } catch (e) { return; }
+    if (state.live) state.live.socket.disconnect();
+    const socket = new window.Phoenix.Socket("/socket", { params: { _csrf_token: state.me?.csrf_token || "" } });
+    socket.connect();
+    const channel = socket.channel("world", {});
+    const take = (world) => { state.liveAt = Date.now(); ingest(world); };
+    channel.on("world", take);
+    channel.join().receive("ok", take);
+    state.live = { socket, channel };
+  }
+
+  const liveIsFresh = () => state.liveAt && Date.now() - state.liveAt < 3000;
+
   let polling = false;
   async function poll() {
     if (replay) { if (replay.data) ingest(replayWorld(replay.frame)); return; }
@@ -342,9 +368,13 @@
     state.beings = new Map(world.beings.map((b) => [b.id, b]));
     if (world.replaceEvents) {
       state.events = world.events;
-    } else if (world.events.length) {
-      state.lastSeq = world.events[0].seq;
-      state.events = world.events.concat(state.events).slice(0, 250);
+    } else {
+      // live pushes and polls can overlap: keep each event once
+      const fresh = world.events.filter((e) => e.seq > state.lastSeq);
+      if (fresh.length) {
+        state.lastSeq = Math.max(...fresh.map((e) => e.seq));
+        state.events = fresh.concat(state.events).slice(0, 250);
+      }
     }
     for (const id of state.display.keys()) if (!state.beings.has(id)) state.display.delete(id);
     if (state.selected && !(state.selected.kind === "being" ? state.beings : state.nodes).has(state.selected.id)) state.selected = null;
@@ -1154,14 +1184,14 @@
       return;
     }
     const tick = state.world?.simulation?.tick_ms || 1000;
-    timer = setTimeout(async () => { await poll(); schedule(); }, Math.max(300, Math.min(1000, tick)));
+    timer = setTimeout(async () => { if (!liveIsFresh()) await poll(); schedule(); }, Math.max(300, Math.min(1000, tick)));
   }
   // refresh countdowns even when nothing changes
   setInterval(() => { if (state.selected && state.selected.kind === "being") renderPanel(); }, 1000);
 
   resize();
   if (replay) { renderAccount(); loadReplay().then(schedule); }
-  else loadMe().then(poll).then(schedule);
+  else loadMe().then(poll).then(() => { connectLive(); schedule(); });
   requestAnimationFrame(draw);
 })();
 </script>
