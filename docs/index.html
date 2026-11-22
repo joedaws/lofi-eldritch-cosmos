@@ -1030,12 +1030,13 @@
     const ago = (at) => fmtMs(Math.max(1000, Date.now() - at)) + " ago";
     const line = (i) => {
       const d = i.data || {};
+      const by = d.via ? ` <span style="color:var(--muted)">(by ${esc(String(d.via).replace(/^agent: /, "your agent "))})</span>` : "";
       switch (i.kind) {
         case "answer": return `<span class="${d.correct ? "ok" : "miss"}">${d.correct ? "✓" : "✗"}</span> “${esc(d.front)}” → ${esc(d.answer || "…")}${d.correct ? "" : ` <span style="color:var(--muted)">(${esc(d.expected)})</span>`}${d.revived ? " · called it back" : ""}`;
         case "summoned": return `summoned ${esc(d.being)} into ${esc(d.place)}`;
-        case "card_added": return `added “${esc(d.front)}”`;
-        case "card_rewritten": return `rewrote “${esc(d.before?.front)}” as “${esc(d.after?.front)}”`;
-        case "card_burned": return `burned “${esc(d.card?.front)}”`;
+        case "card_added": return `added “${esc(d.front)}”${by}`;
+        case "card_rewritten": return `rewrote “${esc(d.before?.front)}” as “${esc(d.after?.front)}”${by}`;
+        case "card_burned": return `burned “${esc(d.card?.front)}”${by}`;
         case "temperament": return `changed its temperament`;
         case "beckon": return `beckoned it to ${esc(d.place)}`;
         default: return esc(i.kind);
@@ -1047,7 +1048,8 @@
         <p class="empty" style="font-style:normal;margin:4px 0 8px">Weakest cards first: what you remember least.</p>` : ""}
       <ul class="journal">${(h.interactions || []).map((i) => `<li><span>${line(i)}</span><span class="when">${ago(i.at)}</span></li>`).join("") || '<li class="empty">Nothing yet.</li>'}</ul>
       ${(h.being_events || []).length ? `<h3>What befell it</h3><ul class="journal">${h.being_events.slice(0, 6).map((e) => `<li><span>${esc(e.text)}</span><span class="when">${ago(e.at)}</span></li>`).join("")}</ul>` : ""}
-      <p style="margin:10px 0 0;font-size:11.5px"><a class="link" href="/api/my/history/export" download>Download my whole history (.jsonl)</a> — every answer and change, one JSON object per line, for your own tools or a learning agent.</p>`;
+      <p style="margin:10px 0 0;font-size:11.5px"><a class="link" href="/api/my/history/export" download>Download my whole history (.jsonl)</a>: every answer and change, one JSON object per line.</p>
+      <p style="margin:6px 0 0;font-size:11.5px"><a class="link" href="/users/settings#agent-tokens">Connect your learning agent</a>: let Claude or another assistant follow your being, quiz you on your weakest cards and add cards for you (over MCP).</p>`;
   }
 
   function temperamentInputs(t) {

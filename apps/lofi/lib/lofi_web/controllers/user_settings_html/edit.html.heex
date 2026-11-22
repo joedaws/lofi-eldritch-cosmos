@@ -46,4 +46,51 @@
       Save Password
     </.button>
   </.form>
+
+  <div class="divider" />
+
+  <section id="agent-tokens" class="space-y-4">
+    <header>
+      <p>Learning agents</p>
+      <p class="text-sm">
+        Let an agent you use to study (Claude, or any assistant that speaks MCP) follow your being:
+        your cards and how well you remember them, what is whispered, your history and what befalls
+        your being. It may add, rewrite and burn cards, but never answer for you: only your own
+        answers keep your being alive.
+      </p>
+    </header>
+
+    <div :if={@new_agent_token} class="alert alert-info" id="new-agent-token">
+      <div>
+        <p><strong>Your new token. Copy it now: it will not be shown again.</strong></p>
+        <pre class="token">{@new_agent_token}</pre>
+        <p>Connect Claude Code:</p>
+        <pre class="token">claude mcp add --transport http lofi-cosmos {url(~p"/mcp")} --header "Authorization: Bearer {@new_agent_token}"</pre>
+        <p>Or any MCP client: server URL <code>{url(~p"/mcp")}</code> with the header
+          <code>Authorization: Bearer &lt;token&gt;</code>. Plain JSON lives under <code>{url(~p"/api/agent/being")}</code> and its siblings (see the README).</p>
+      </div>
+    </div>
+
+    <ul :if={@agent_tokens != []} class="tokens">
+      <li :for={token <- @agent_tokens}>
+        <span>
+          <strong>{token.name}</strong>
+          <span class="text-sm">
+            created {Calendar.strftime(token.inserted_at, "%Y-%m-%d")} ·
+            {if token.last_used_at,
+              do: "last used #{Calendar.strftime(token.last_used_at, "%Y-%m-%d %H:%M")} UTC",
+              else: "never used"}
+          </span>
+        </span>
+        <.form for={%{}} action={~p"/users/settings/agent-tokens/#{token.id}"} method="delete" class="inline">
+          <button type="submit" class="btn btn-soft">Revoke</button>
+        </.form>
+      </li>
+    </ul>
+
+    <.form :let={f} for={%{}} as={:agent_token} action={~p"/users/settings/agent-tokens"} id="create_agent_token">
+      <.input field={f[:name]} type="text" label="Name it (e.g. Claude, my study bot)" maxlength="40" required />
+      <.button variant="primary">Create a token</.button>
+    </.form>
+  </section>
 </Layouts.app>

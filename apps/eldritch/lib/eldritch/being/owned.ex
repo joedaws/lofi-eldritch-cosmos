@@ -87,40 +87,49 @@ defmodule Eldritch.Being.Owned do
     end)
   end
 
-  def add_card(owner, front, back) do
+  # `opts`: `via:` names who made the change for the owner (e.g. their learning agent)
+  def add_card(owner, front, back, opts \\ []) do
     with {:ok, card} = ok <- change_deck(owner, &Deck.add(&1, front, back)) do
-      log_card(owner, :card_added, %{
-        "card_id" => card["id"],
-        "front" => card["front"],
-        "back" => card["back"]
-      })
+      log_card(
+        owner,
+        :card_added,
+        %{"card_id" => card["id"], "front" => card["front"], "back" => card["back"]},
+        opts
+      )
 
       ok
     end
   end
 
-  def update_card(owner, card_id, front, back) do
+  def update_card(owner, card_id, front, back, opts \\ []) do
     old = find_card(owner, card_id)
 
     with {:ok, _} = ok <- change_deck(owner, &Deck.update(&1, card_id, front, back)) do
-      log_card(owner, :card_rewritten, %{
-        "card_id" => card_id,
-        "before" => old && Map.take(old, ["front", "back", "box"]),
-        "after" => %{"front" => front, "back" => back || ""}
-      })
+      log_card(
+        owner,
+        :card_rewritten,
+        %{
+          "card_id" => card_id,
+          "before" => old && Map.take(old, ["front", "back", "box"]),
+          "after" => %{"front" => front, "back" => back || ""}
+        },
+        opts
+      )
 
       ok
     end
   end
 
-  def delete_card(owner, card_id) do
+  def delete_card(owner, card_id, opts \\ []) do
     old = find_card(owner, card_id)
 
     with {:ok, _} = ok <- change_deck(owner, &Deck.delete(&1, card_id)) do
-      log_card(owner, :card_burned, %{
-        "card_id" => card_id,
-        "card" => old && Map.take(old, ["front", "back", "box"])
-      })
+      log_card(
+        owner,
+        :card_burned,
+        %{"card_id" => card_id, "card" => old && Map.take(old, ["front", "back", "box"])},
+        opts
+      )
 
       ok
     end
@@ -133,7 +142,9 @@ defmodule Eldritch.Being.Owned do
     end
   end
 
-  defp log_card(owner, kind, data) do
+  defp log_card(owner, kind, data, opts) do
+    data = if via = opts[:via], do: Map.put(data, "via", via), else: data
+
     case being_of(owner) do
       nil ->
         :ok

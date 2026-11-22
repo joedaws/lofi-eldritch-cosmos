@@ -17,7 +17,7 @@ defmodule LofiWeb.HistoryController do
 
     json(conn, %{
       "interactions" => History.interactions(owner, limit: limit, before: before),
-      "cards" => card_stats(owner),
+      "cards" => Lofi.Agent.accuracy(owner),
       "being_events" => if(being, do: History.being_events(being["id"], 30), else: [])
     })
   end
@@ -34,26 +34,4 @@ defmodule LofiWeb.HistoryController do
     |> send_resp(200, if(lines == "", do: "", else: lines <> "\n"))
   end
 
-  # how well the person remembers each card they have answered
-  defp card_stats(owner) do
-    owner
-    |> History.interactions(limit: 5_000)
-    |> Enum.filter(&(&1["kind"] == "answer"))
-    |> Enum.group_by(& &1["data"]["card_id"])
-    |> Enum.map(fn {card_id, answers} ->
-      [latest | _] = answers
-      right = Enum.count(answers, & &1["data"]["correct"])
-
-      %{
-        "card_id" => card_id,
-        "front" => latest["data"]["front"],
-        "being" => latest["data"]["being"],
-        "answers" => length(answers),
-        "right" => right,
-        "last_at" => latest["at"],
-        "last_correct" => latest["data"]["correct"]
-      }
-    end)
-    |> Enum.sort_by(&{&1["right"] / &1["answers"], -&1["last_at"]})
-  end
 end

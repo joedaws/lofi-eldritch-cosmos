@@ -70,6 +70,24 @@ Each person may summon **one being** (the **My being** tab):
   `beckon`, with its data) or an `event` from the chronicle about a being you owned or tended.
   Nobody else can read your history.
 
+### Connect your learning agent
+
+If you study with an AI assistant, let it follow your being. In **Settings → Learning agents**
+create a token (shown once; revoke it any time), then point your agent at the built-in
+**MCP server**:
+
+```bash
+claude mcp add --transport http lofi-cosmos https://COSMOS_DOMAIN/mcp \
+  --header "Authorization: Bearer lofi_agent_..."
+```
+
+Tools: `my_being`, `my_cards`, `whispering_now`, `card_accuracy`, `recent_history`,
+`what_befell_my_being`, `cosmos_overview`, `explain` (the cosmos's concepts), and for the deck
+`add_card`, `rewrite_card`, `burn_card`. An agent sees only its person's being, cards and
+history plus the public life of the cosmos. It **cannot answer whispers**: only the person's own
+answers keep their being alive, so the agent quizzes them instead. Edits it makes show in the
+journal as made by your agent. The same tools are plain JSON under `/api/agent/…` (see below).
+
 Beings nobody owns (the seeded ones and their children) are **the commons**: anyone signed
 in may answer their whispers.
 
@@ -210,6 +228,9 @@ Writes use the browser session and need the CSRF token from `GET /api/me`
 | `POST /api/my/cards` · `PUT`/`DELETE /api/my/cards/:id` | signed in | `front`, `back` | edit your deck |
 | `GET /api/my/history` | signed in | `limit`, `before` | your recent interactions, accuracy per card, your being's events |
 | `GET /api/my/history/export` | signed in | | your whole history as JSON Lines |
+| `POST /mcp` | agent token | JSON-RPC | the MCP server for learning agents (`initialize`, `tools/list`, `tools/call`) |
+| `GET /api/agent/being` · `cards` · `whispering` · `accuracy` · `history` · `events` · `overview` · `explain?topic=` | agent token | | the same tools as plain JSON |
+| `POST /api/agent/cards` · `PUT`/`DELETE /api/agent/cards/:id` | agent token | `front`, `back` | edit the deck |
 | `POST /being/recall` | owner (or anyone, for the commons) | `id`, `answer` | answer a whisper (409 if none) |
 | `POST /being/beckon` | owner (hourly) · keeper | `id`, `node_id` | 429 while cooling down |
 | `POST /being`, `POST /being/incantation` | keeper | | beings of the commons |
@@ -263,8 +284,12 @@ Production settings (in `/etc/lofi.env`, see `infra/lofi.env.example`): `SECRET_
   - What to export: every answer to an incantation (card, answer given, right or wrong,
     box before and after, time), card edits, temperament changes, beckons, and chronicle
     events about their being (fading, revival, gifts, mourning).
-  - Done: the per-person history (`Eldritch.History`) and a JSON Lines download.
-  - Ways to hand it over next: a personal, revocable
+  - Done: the per-person history (`Eldritch.History`), a JSON Lines download, personal
+    revocable agent tokens, and a built-in MCP server (`/mcp`) plus JSON api (`/api/agent`)
+    through which an agent reads the person's being, deck and history and edits the deck
+    (never answers whispers).
+  - Next: webhooks pushed to the agent when something happens (a whisper, a fading).
+  - Earlier ideas: a personal, revocable
     API token for a read-only feed the agent polls; webhooks pushed to the agent; an MCP
     server so agents can ask questions like "which cards did I miss this week?"
   - Only the owner can export their own history, and tokens can be revoked at any time.

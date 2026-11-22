@@ -6,7 +6,7 @@ defmodule Lofi.Accounts do
   import Ecto.Query, warn: false
   alias Lofi.Repo
 
-  alias Lofi.Accounts.{User, UserToken, UserNotifier}
+  alias Lofi.Accounts.{AgentToken, User, UserToken, UserNotifier}
 
   ## Database getters
 
@@ -87,6 +87,76 @@ defmodule Lofi.Accounts do
   def change_user_registration(user, attrs \\ %{}, opts \\ []) do
     User.registration_changeset(user, attrs, opts)
   end
+
+  ## Agent tokens
+
+  @max_agent_tokens 10
+
+  @doc """
+  Creates a token for one of the user's learning agents. Returns
+  `{:ok, plain_token, agent_token}`; the plain token is never stored and
+  cannot be shown again.
+  """
+  def create_agent_token(%User{} = user, name) do
+    active = Repo.aggregate(from(t in AgentToken, where: t.user_id == ^user.id and is_nil(t.revoked_at)), :count)
+
+    if active >= @max_agent_tokens do
+      {:error, :too_many_tokens}
+    else
+      {plain, changeset} = AgentToken.build(user, name)
+
+      with {:ok, token} <- Repo.insert(changeset) do
+        {:ok, plain, token}
+      end
+    end
+  end
+
+  @doc "The user's tokens that still work, newest first"
+  def list_agent_tokens(%User{} = user) do
+    Repo.all(
+      from t in AgentToken,
+        where: t.user_id == ^user.id and is_nil(t.revoked_at),
+        order_by: [desc: t.id]
+    )
+  end
+
+  @doc "Revokes one of the user's tokens"
+  def revoke_agent_token(%User{} = user, id) do
+    case Repo.get_by(AgentToken, id: id, user_id: user.id) do
+      nil -> {:error, :not_found}
+      token -> token |> Ecto.Changeset.change(revoked_at: DateTime.utc_now(:second)) |> Repo.update()
+    end
+  end
+
+  @doc """
+  The user a token belongs to, or nil for unknown or revoked tokens.
+  Notes when the token was last used (at most once a minute).
+  """
+  def get_user_by_agent_token(plain) when is_binary(plain) do
+    hash = AgentToken.hash(plain)
+
+    query =
+      from t in AgentToken,
+        join: u in assoc(t, :user),
+        where: t.token_hash == ^hash and is_nil(t.revoked_at),
+        select: {t, u}
+
+    case Repo.one(query) do
+      nil ->
+        nil
+
+      {token, user} ->
+        now = DateTime.utc_now(:second)
+
+        if is_nil(token.last_used_at) or DateTime.diff(now, token.last_used_at) > 60 do
+          token |> Ecto.Changeset.change(last_used_at: now) |> Repo.update()
+        end
+
+        {user, token}
+    end
+  end
+
+  def get_user_by_agent_token(_), do: nil
 
   @doc "Gets users by id (unknown ids are skipped)."
   def get_users(ids) do

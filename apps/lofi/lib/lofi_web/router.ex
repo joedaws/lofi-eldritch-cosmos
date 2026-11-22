@@ -22,6 +22,12 @@ defmodule LofiWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
+  # a person's learning agent, with a token from Settings (no session, no CSRF)
+  pipeline :agent do
+    plug :accepts, ["json"]
+    plug LofiWeb.Plugs.AgentAuth
+  end
+
   pipeline :signed_in do
     plug LofiWeb.Plugs.RequireUser
   end
@@ -67,6 +73,30 @@ defmodule LofiWeb.Router do
     get "/api/my/history/export", HistoryController, :export
   end
 
+  # Learning agents: the same tools as plain JSON, and as an MCP server
+  scope "/api/agent", LofiWeb do
+    pipe_through :agent
+
+    get "/being", AgentController, :being
+    get "/cards", AgentController, :cards
+    get "/whispering", AgentController, :whispering
+    get "/accuracy", AgentController, :accuracy
+    get "/history", AgentController, :history
+    get "/events", AgentController, :events
+    get "/overview", AgentController, :overview
+    get "/explain", AgentController, :explain
+    post "/cards", AgentController, :add_card
+    put "/cards/:card_id", AgentController, :rewrite_card
+    delete "/cards/:card_id", AgentController, :burn_card
+  end
+
+  scope "/", LofiWeb do
+    pipe_through :agent
+
+    post "/mcp", McpController, :rpc
+    get "/mcp", McpController, :stream
+  end
+
   # Only the admin runs the cosmos itself
   scope "/", LofiWeb do
     pipe_through [:api, :admin]
@@ -103,6 +133,8 @@ defmodule LofiWeb.Router do
 
     get "/users/settings", UserSettingsController, :edit
     put "/users/settings", UserSettingsController, :update
+    post "/users/settings/agent-tokens", UserSettingsController, :create_agent_token
+    delete "/users/settings/agent-tokens/:id", UserSettingsController, :revoke_agent_token
     get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
   end
 

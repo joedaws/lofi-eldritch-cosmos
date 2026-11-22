@@ -8,6 +8,7 @@ defmodule LofiWeb.UserSettingsController do
 
   plug :require_sudo_mode
   plug :assign_email_and_password_changesets
+  plug :assign_agent_tokens
 
   def edit(conn, _params) do
     render(conn, :edit)
@@ -65,6 +66,44 @@ defmodule LofiWeb.UserSettingsController do
         |> put_flash(:error, "Email change link is invalid or it has expired.")
         |> redirect(to: ~p"/users/settings")
     end
+  end
+
+  # A token for the person's learning agent; shown once, never again
+  def create_agent_token(conn, %{"agent_token" => %{"name" => name}}) do
+    user = conn.assigns.current_scope.user
+
+    case Accounts.create_agent_token(user, name) do
+      {:ok, plain, _token} ->
+        conn
+        |> assign(:agent_tokens, Accounts.list_agent_tokens(user))
+        |> render(:edit, new_agent_token: plain)
+
+      {:error, :too_many_tokens} ->
+        conn
+        |> put_flash(:error, "You already have 10 agent tokens. Revoke one first.")
+        |> redirect(to: ~p"/users/settings")
+
+      {:error, %Ecto.Changeset{}} ->
+        conn
+        |> put_flash(:error, "Give the token a name (at most 40 characters).")
+        |> redirect(to: ~p"/users/settings")
+    end
+  end
+
+  def revoke_agent_token(conn, %{"id" => id}) do
+    user = conn.assigns.current_scope.user
+
+    case Accounts.revoke_agent_token(user, id) do
+      {:ok, token} -> put_flash(conn, :info, "Revoked the token \"#{token.name}\".")
+      _ -> put_flash(conn, :error, "No such token.")
+    end
+    |> redirect(to: ~p"/users/settings")
+  end
+
+  defp assign_agent_tokens(conn, _opts) do
+    conn
+    |> assign(:agent_tokens, Accounts.list_agent_tokens(conn.assigns.current_scope.user))
+    |> assign(:new_agent_token, nil)
   end
 
   defp assign_email_and_password_changesets(conn, _opts) do
