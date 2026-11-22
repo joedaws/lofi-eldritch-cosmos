@@ -4,26 +4,38 @@ defmodule Lofi.Portrait.Prompt do
   (`Lofi.Portrait.ImageModel`), also handy for agents and alt text.
   """
 
-  @style "Lo-fi eldritch portrait, risograph print look: flat muted inks, coarse paper " <>
-           "grain, bold ink outlines, centred bust on a plain dark ground, no text."
+  @style "Lo-fi eldritch portrait, risograph print: two spot inks and black overprinted " <>
+           "on cream paper, halftone shading, slight misregistration, paper grain, strong " <>
+           "silhouette, the creature looming large and cropped by the frame, no text."
 
   @palettes %{
-    "verdigris" => "verdigris green and putty",
-    "oxblood" => "oxblood red and bone white",
-    "ochre" => "ochre and burnt umber",
-    "dusk" => "dusky lilac and pale green",
-    "seaglass" => "sea-glass blue and coral",
-    "moss" => "moss green and rust",
-    "bone" => "bone and soot",
-    "ember" => "charcoal grey and ember orange"
+    "verdigris" => "teal and orange inks",
+    "oxblood" => "burgundy and sunflower-yellow inks",
+    "ochre" => "mustard and blue inks",
+    "dusk" => "purple and green inks",
+    "seaglass" => "aqua and bright red inks",
+    "moss" => "green and fluorescent pink inks",
+    "bone" => "grey and bright red inks",
+    "ember" => "federal blue and orange inks"
+  }
+
+  @heroes %{
+    "great_eye" => "one enormous staring eye",
+    "crown" => "a crown of horns",
+    "antlers" => "great branching antlers",
+    "frill" => "a spiked frill fanned out behind its head",
+    "halo_eyes" => "a halo set with small eyes",
+    "mask" => "a pale mask for a face",
+    "maw" => "a gaping toothed maw",
+    "beard" => "a beard of tentacles"
   }
 
   @forms %{
-    "bulb" => "a bulbous, swollen head",
-    "spire" => "a tall, tapering spire of a body",
-    "maw" => "a wide, squat body that is mostly mouth",
-    "cluster" => "a cluster of fused orbs",
-    "veil" => "a hooded, veiled shape"
+    "bulb" => "an enormous head on a small body",
+    "spire" => "a small head on a long neck rising from a tall body",
+    "maw" => "a wide, squat body with a small sunken head",
+    "cluster" => "a body bearing several heads on stalks",
+    "veil" => "a tall hood, its face lost in shadow but for its eyes"
   }
 
   def build(%{"anatomy" => a, "mood" => m} = f) do
@@ -33,7 +45,8 @@ defmodule Lofi.Portrait.Prompt do
       @style,
       "A being#{if name, do: " named #{name}", else: ""}: #{@forms[a["form"]]}, " <>
         "#{count(a["eyes"], "eye")}#{limbs(a)}, marked with #{a["markings"]}, " <>
-        "in #{@palettes[a["palette"]]}.",
+        "in #{@palettes[a["palette"]]}." <>
+        if(a["hero"], do: " Above all, it has #{@heroes[a["hero"]]}.", else: ""),
       mood(m)
     ]
     |> Enum.reject(&(&1 == ""))

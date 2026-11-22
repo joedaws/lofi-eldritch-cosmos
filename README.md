@@ -216,22 +216,32 @@ the page falls back to polling `GET /world`.
 
 ## Portraits
 
-`Lofi.Portrait` draws every being from its *features* (`Lofi.Portrait.Features`):
+`Lofi.Portrait` draws every being from its *features* (`Lofi.Portrait.Features`), as a
+risograph print: two spot inks and black overprinted on cream paper, halftone shadows,
+layers slightly out of register. The design follows character-design practice: a strong
+silhouette first, one memorable feature, light and value contrast, expression.
 
 - **Anatomy comes from the name alone**, so a being keeps its face all its life and a name
   can be previewed before summoning. The number of parts in the name (`Gor Lop~Tome` → 3)
-  is its number of eyes; a hash of the name picks its form (bulb, spire, maw, cluster,
-  veil), limbs (tentacles, horns, antlers, fronds), markings, palette and symmetry.
+  is its number of eyes. A hash of the name picks its build (an enormous head on a small
+  body, a head on a long neck, a squat body with a sunken head, several heads on stalks, a
+  hood with only eyes showing), head size, lean, whether it looms out of the frame, the
+  side the light falls from, its inks, and its **hero feature**: a great eye, a crown of
+  horns, antlers, a frill, a halo of eyes, a mask, a maw, or a beard of tentacles. The hero
+  is printed solid in the accent ink; markings stay faint so nothing competes with it.
 - **Mood comes from its state**, in a few coarse levels so the portrait changes only when
-  something meaningful does: ichor (pale and open-mouthed when starving, glowing when
-  full), lack (pupils widen), the dominant register (Real: a jagged outline; Symbolic: a
-  ring of runes; Imaginary: mirror symmetry and a shimmering double), a loosened knot (the
-  ring breaks), mourning (a tear), whispering (rising sound), its desire and revealed
-  objet a (tokens in the corners), wanderlust (longer limbs), and fading (grey, cracked,
-  eyes closed).
+  something meaningful does: ichor (heavy lids and an open mouth when starving, a brighter
+  ground when full), lack (wide eyes, big pupils, raised brows), the dominant register (Real:
+  a jagged outline, spines and a grimace; Symbolic: a ring of runes; Imaginary: symmetry and
+  a shifted double), a loosened knot (a broken ring, a scowl), mourning (a tear and a
+  frown), whispering (rising sound), generosity (smooth forms, or spines when it is low),
+  wanderlust (longer limbs), its desire and revealed objet a (tokens in the corners), and
+  fading (grey, cracked, eyes closed).
+- `Lofi.Portrait.Svg.render(features, silhouette: true)` draws the filled silhouette, for
+  judging whether designs read and differ.
 
 Renderers implement `Lofi.Portrait.Renderer`. The default, `Lofi.Portrait.Svg`, draws in
-code (about 0.3 ms and 8 KB per portrait). `Lofi.Portrait.ImageModel` is the scaffold for
+code (about 0.3 ms and 10 KB per portrait). `Lofi.Portrait.ImageModel` is the scaffold for
 an AI image model: it turns features into a prompt (`Lofi.Portrait.Prompt`), calls a
 function you configure, keeps each result on disk, and falls back to the SVG:
 

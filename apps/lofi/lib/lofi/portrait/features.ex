@@ -11,16 +11,19 @@ defmodule Lofi.Portrait.Features do
   @limbs ~w(tentacles horns antlers fronds none)
   @markings ~w(rings dots runes veins)
   @palettes ~w(verdigris oxblood ochre dusk seaglass moss bone ember)
+  # the one thing you remember about a being after two seconds
+  @heroes ~w(great_eye crown antlers frill halo_eyes mask maw beard)
 
   def forms(), do: @forms
   def palettes(), do: @palettes
+  def heroes(), do: @heroes
 
   @doc "Features of a being view (map with \"name\", \"status\", \"psyche\", …) or of a bare name"
   def from(name) when is_binary(name), do: from(%{"name" => name})
 
   def from(%{"name" => name} = being) do
     name = String.trim(name || "") |> then(&if(&1 == "", do: "?", else: &1))
-    %{"version" => 1, "name" => name, "anatomy" => anatomy(name), "mood" => mood(being)}
+    %{"version" => 2, "name" => name, "anatomy" => anatomy(name), "mood" => mood(being)}
   end
 
   @doc """
@@ -42,6 +45,12 @@ defmodule Lofi.Portrait.Features do
       "limb_count" => if(limbs == "none", do: 0, else: 2 + rem(div(seed, 7), 5)),
       "markings" => pick(@markings, seed, :markings),
       "palette" => pick(@palettes, seed, :palette),
+      "hero" => pick(@heroes, seed, :hero),
+      # proportions: how much of it is head, how it leans, how close it looms
+      "head" => pick(~w(small medium large), seed, :head),
+      "lean" => pick(~w(left none right), seed, :lean),
+      "looming" => rem(div(seed, 17), 4) == 0,
+      "light" => pick(~w(left right), seed, :light),
       "symmetric" => rem(div(seed, 13), 3) == 0
     }
   end
@@ -65,6 +74,7 @@ defmodule Lofi.Portrait.Features do
       "objet_a" => psyche["objet_a"],
       "wanderlust" => bucket((temperament["wanderlust"] || 50) / 100, 2),
       "sociability" => bucket((temperament["sociability"] || 50) / 100, 2),
+      "generosity" => bucket((temperament["generosity"] || 50) / 100, 2),
       "whispering" => get_in(b, ["incantation", "awaiting"]) == true
     }
   end

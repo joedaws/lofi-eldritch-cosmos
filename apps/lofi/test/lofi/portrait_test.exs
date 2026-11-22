@@ -84,6 +84,25 @@ defmodule Lofi.PortraitTest do
     end
   end
 
+  test "every form carries every hero feature, in colour and in silhouette" do
+    base = Portrait.features(@calm)
+
+    for form <- Features.forms(), hero <- Features.heroes(), eyes <- [1, 4], faded <- [false, true] do
+      f =
+        base
+        |> put_in(["anatomy", "form"], form)
+        |> put_in(["anatomy", "hero"], hero)
+        |> put_in(["anatomy", "eyes"], eyes)
+        |> put_in(["mood", "faded"], faded)
+
+      {:ok, svg, _} = Svg.render(f, [])
+      refute IO.iodata_to_binary(svg) =~ "NaN"
+      parse!(svg)
+      {:ok, sil, _} = Svg.render(f, silhouette: true)
+      parse!(sil)
+    end
+  end
+
   test "a prompt describes the portrait" do
     prompt = Portrait.prompt(Portrait.features(Map.put(@calm, "status", "faded")))
     assert prompt =~ "Gor Lop~Tome"
