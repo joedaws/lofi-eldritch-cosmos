@@ -210,9 +210,14 @@ Writes use the browser session and need the CSRF token from `GET /api/me`
 
 ## Deploying
 
-Production needs `SECRET_KEY_BASE` (`mix phx.gen.secret`), `PHX_HOST`, `PHX_SERVER=true`,
-optionally `PORT` and `DATABASE_PATH`, and a mail provider for login links (configure
-`Lofi.Mailer` in `config/runtime.exs`, e.g. Postmark or Resend via Swoosh).
+The cosmos runs as a release (`MIX_ENV=prod mix release lofi`) under systemd behind nginx,
+beside the wish list on the Hetzner server. Every push to `main` is tested and deployed by
+`.github/workflows/deploy.yml`. One-time server setup: [infra/RUNBOOK.md](infra/RUNBOOK.md);
+status and decisions: [docs/deployment-handoff.md](docs/deployment-handoff.md).
+
+Production settings (in `/etc/lofi.env`, see `infra/lofi.env.example`): `SECRET_KEY_BASE`,
+`PHX_HOST`, `PHX_SERVER=true`, `PORT`, `XDG_DATA_HOME` (where the databases live),
+`ELDRITCH_AUTOSTART=true`, and `RESEND_API_KEY` + `MAIL_FROM` for login emails.
 
 # Release Road map
 

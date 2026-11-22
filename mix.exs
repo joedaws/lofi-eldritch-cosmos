@@ -6,7 +6,19 @@ defmodule LofiEldritchCosmos.MixProject do
       apps_path: "apps",
       version: "0.1.0",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      releases: releases()
+    ]
+  end
+
+  # `MIX_ENV=prod mix release lofi` builds the whole cosmos (the ECS, the
+  # simulation and the web) into _build/prod/rel/lofi. See infra/RUNBOOK.md.
+  defp releases do
+    [
+      lofi: [
+        applications: [cosmos: :permanent, eldritch: :permanent, lofi: :permanent],
+        include_executables_for: [:unix]
+      ]
     ]
   end
 

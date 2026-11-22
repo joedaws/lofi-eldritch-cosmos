@@ -9,7 +9,7 @@ defmodule Lofi.Accounts.UserNotifier do
     email =
       new()
       |> to(recipient)
-      |> from({"Lofi", "contact@example.com"})
+      |> from(Application.get_env(:lofi, :mail_from, {"Lofi Eldritch Cosmos", "contact@example.com"}))
       |> subject(subject)
       |> text_body(body)
 

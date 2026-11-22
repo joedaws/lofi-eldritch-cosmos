@@ -1,0 +1,132 @@
+name: Deploy
+
+# Every push to main is tested and, if the tests pass, deployed to the
+# Hetzner server (see infra/RUNBOOK.md). Until the VPS_IP and SSH_PRIVATE_KEY
+# secrets are added, the deploy is skipped rather than failing.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# one deploy at a time; a newer push waits for the running one
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+# Pinned exactly: the release bundles this ERTS, so the OTP patch level is the
+# production TLS stack (the same OTP as the wish list on this server).
+env:
+  ELIXIR_VERSION: "1.18.6"
+  OTP_VERSION: "27.3.4.19"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-24.04
+    env:
+      MIX_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+          version-type: strict
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Cache build
+        uses: actions/cache@v4
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-test-otp${{ env.OTP_VERSION }}-ex${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-build-test-otp${{ env.OTP_VERSION }}-ex${{ env.ELIXIR_VERSION }}-
+
+      - name: Install deps
+        run: mix deps.get
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Compile
+        run: mix compile --warnings-as-errors
+
+      - name: Run tests
+        run: mix test
+
+  # Is the server set up yet? (secrets cannot be used in a job's `if`)
+  check:
+    name: Server configured?
+    runs-on: ubuntu-24.04
+    outputs:
+      ready: ${{ steps.secrets.outputs.ready }}
+    steps:
+      - id: secrets
+        run: echo "ready=${{ secrets.VPS_IP != '' && secrets.SSH_PRIVATE_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+  build-and-deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-24.04
+    needs: [test, check]
+    if: needs.check.outputs.ready == 'true'
+    env:
+      MIX_ENV: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+          version-type: strict
+
+      - name: Cache deps
+        uses: actions/cache@v4
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Cache build
+        uses: actions/cache@v4
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-prod-otp${{ env.OTP_VERSION }}-ex${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-build-prod-otp${{ env.OTP_VERSION }}-ex${{ env.ELIXIR_VERSION }}-
+
+      - name: Install deps
+        run: mix deps.get --only prod
+
+      - name: Build release
+        run: mix release lofi --overwrite
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts
+
+      - name: Sync release and infra scripts to the server
+        run: |
+          rsync -az --delete _build/prod/rel/lofi/ deploy@${{ secrets.VPS_IP }}:/opt/lofi/
+          rsync -az --delete infra/ deploy@${{ secrets.VPS_IP }}:/opt/lofi-infra/
+
+      # migrations run on start; the cosmos flushes its databases on stop
+      - name: Restart service
+        run: ssh deploy@${{ secrets.VPS_IP }} 'sudo systemctl restart lofi'
+
+      - name: Verify the cosmos answers
+        run: |
+          ssh deploy@${{ secrets.VPS_IP }} '
+            systemctl is-active lofi &&
+            for i in $(seq 1 30); do curl -sf http://127.0.0.1:4100/ping && exit 0; sleep 2; done;
+            echo "lofi did not answer on :4100"; exit 1'

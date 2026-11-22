@@ -1,0 +1,41 @@
+# Systemd unit for the Lofi Eldritch Cosmos
+# Copy to /etc/systemd/system/lofi.service
+# Then: sudo systemctl daemon-reload && sudo systemctl enable --now lofi
+#
+# Runs beside wish_list.service on the same server: the release lives in
+# /opt/lofi, its data in /var/lib/lofi-eldritch-cosmos, and it listens on
+# 127.0.0.1:4100 behind nginx.
+
+[Unit]
+Description=Lofi Eldritch Cosmos
+After=network.target
+
+[Service]
+Type=exec
+User=deploy
+Group=deploy
+WorkingDirectory=/opt/lofi
+
+# Runtime secrets and settings: see infra/lofi.env.example (chmod 600)
+EnvironmentFile=/etc/lofi.env
+Environment=LANG=C.UTF-8
+Environment=LC_ALL=C.UTF-8
+
+ExecStart=/opt/lofi/bin/lofi start
+ExecStop=/opt/lofi/bin/lofi stop
+
+Restart=on-failure
+RestartSec=5s
+
+# give the cosmos time to flush its databases on shutdown
+TimeoutStopSec=30s
+
+# Allow the BEAM to open many file descriptors
+LimitNOFILE=65536
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=lofi
+
+[Install]
+WantedBy=multi-user.target

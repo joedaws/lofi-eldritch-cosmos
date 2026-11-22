@@ -44,9 +44,22 @@ if config_env() == :prod do
 
   config :lofi, LofiWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
-    http: [ip: {0, 0, 0, 0, 0, 0, 0, 0}],
+    # nginx in front terminates https; the app only listens on localhost
+    http: [ip: {127, 0, 0, 1}],
     secret_key_base: secret_key_base
 
-  # Emails (login links) need a real provider in production, e.g.
-  #   config :lofi, Lofi.Mailer, adapter: Swoosh.Adapters.Postmark, api_key: System.get_env("POSTMARK_API_KEY")
+  # Login links are emailed through Resend (https://resend.com)
+  if api_key = System.get_env("RESEND_API_KEY") do
+    config :lofi, Lofi.Mailer, adapter: Swoosh.Adapters.Resend, api_key: api_key
+  else
+    IO.warn("RESEND_API_KEY is not set: login emails cannot be sent")
+  end
+
+  # the address login emails come from, e.g. "Lofi Eldritch Cosmos <login@your-domain>"
+  if from = System.get_env("MAIL_FROM") do
+    case Regex.run(~r/^\s*(.*?)\s*<([^>]+)>\s*$/, from) do
+      [_, name, address] -> config :lofi, mail_from: {name, address}
+      _ -> config :lofi, mail_from: {"Lofi Eldritch Cosmos", String.trim(from)}
+    end
+  end
 end

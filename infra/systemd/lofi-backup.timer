@@ -1,0 +1,14 @@
+# Runs lofi-backup.service every night
+# Copy to /etc/systemd/system/lofi-backup.timer
+# Then: sudo systemctl daemon-reload && sudo systemctl enable --now lofi-backup.timer
+
+[Unit]
+Description=Nightly backup of the Lofi Eldritch Cosmos databases
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

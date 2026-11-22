@@ -8,7 +8,8 @@ import Config
 config :cosmos, Cosmos.System.Scheduler,
   jobs: [
     # Every 1 minutes
-    {"* * * * *", fn -> Cosmos.Metrics.get() end}
+    # a {module, function, args} tuple: releases cannot hold anonymous functions
+    {"* * * * *", {Cosmos.Metrics, :get, []}}
   ]
 
 config :cosmos, monitor_metrics: "true"

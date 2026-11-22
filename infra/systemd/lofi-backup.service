@@ -1,0 +1,14 @@
+# Nightly copy of the cosmos's three SQLite databases (run by lofi-backup.timer)
+# Copy to /etc/systemd/system/lofi-backup.service
+
+[Unit]
+Description=Back up the Lofi Eldritch Cosmos databases
+
+[Service]
+Type=oneshot
+User=deploy
+Group=deploy
+Environment=DATA_DIR=/var/lib/lofi-eldritch-cosmos
+Environment=BACKUP_DIR=/var/backups/lofi
+Environment=KEEP_DAYS=14
+ExecStart=/opt/lofi-infra/backup.sh

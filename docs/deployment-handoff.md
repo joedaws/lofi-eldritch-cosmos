@@ -1,7 +1,19 @@
 # Deployment handoff: running the cosmos on the Hetzner server
 
-Status: **waiting on one decision: the domain.** The deploy trigger is decided:
-**every push to `main` deploys** (option 2 below).
+Status: **built and waiting on one decision: the domain.** The deploy trigger is decided
+(**every push to `main` deploys**, option 2 below), and everything that does not depend on
+the domain is in the repo:
+
+- release: `MIX_ENV=prod mix release lofi` (tested: boots, migrates, starts the simulation,
+  serves on 127.0.0.1:4100 only)
+- `infra/systemd/lofi.service`, `infra/systemd/lofi-backup.{service,timer}`, `infra/backup.sh`
+- `infra/nginx/lofi.conf` and `infra/lofi.env.example` (with a `COSMOS_DOMAIN` placeholder)
+- `infra/RUNBOOK.md`: the one-time server steps
+- `.github/workflows/deploy.yml`: tests on every push to `main`, deploys once the
+  `VPS_IP` and `SSH_PRIVATE_KEY` secrets exist (skipped until then)
+
+When the domain is chosen: replace `COSMOS_DOMAIN` in `infra/nginx/lofi.conf` and
+`/etc/lofi.env`, and follow `infra/RUNBOOK.md`.
 
 ## What we found
 
