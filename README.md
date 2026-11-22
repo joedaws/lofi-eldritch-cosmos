@@ -216,22 +216,26 @@ the page falls back to polling `GET /world`.
 
 ## Portraits
 
-`Lofi.Portrait` draws every being from its *features* (`Lofi.Portrait.Features`), as a
-risograph print: two spot inks and black overprinted on cream paper, halftone shadows,
-layers slightly out of register. The design follows character-design practice: a strong
-silhouette first, one memorable feature, light and value contrast, expression.
+`Lofi.Portrait` draws every being from its *features* (`Lofi.Portrait.Features`) in black
+and white ink, in the manner of horror manga, inside a classic Mac OS window: screentone
+dots for tone, hatching and cross-hatching for shadow, solid spotted blacks for focus,
+contour lines that follow the form, a rim of bare paper where the light falls. The design
+follows character-design practice: a strong silhouette first, one memorable feature, light
+and value contrast, expression.
 
 - **Anatomy comes from the name alone**, so a being keeps its face all its life and a name
   can be previewed before summoning. The number of parts in the name (`Gor Lop~Tome` → 3)
   is its number of eyes. A hash of the name picks its build (an enormous head on a small
   body, a head on a long neck, a squat body with a sunken head, several heads on stalks, a
   hood with only eyes showing), head size, lean, whether it looms out of the frame, the
-  side the light falls from, its inks, and its **hero feature**: a great eye, a crown of
-  horns, antlers, a frill, a halo of eyes, a mask, a maw, or a beard of tentacles. The hero
-  is printed solid in the accent ink; markings stay faint so nothing competes with it.
+  side the light falls from, the tone of its hide (pale or mid screentone, or near-black
+  with white highlights), whether it is biomechanical (cables, ports, segmented plates),
+  what it stands before (manga focus lines, a hatched megastructure, rain, or a black
+  void), and its **hero feature**: a great eye, a crown of horns, antlers, a frill, a halo
+  of eyes, a mask, a maw, or a beard of tentacles, printed as the strongest black or white.
 - **Mood comes from its state**, in a few coarse levels so the portrait changes only when
   something meaningful does: ichor (heavy lids and an open mouth when starving, a brighter
-  ground when full), lack (wide eyes, big pupils, raised brows), the dominant register (Real:
+  outline when full), lack (wide eyes, pinpoint pupils, raised brows), the dominant register (Real:
   a jagged outline, spines and a grimace; Symbolic: a ring of runes; Imaginary: symmetry and
   a shifted double), a loosened knot (a broken ring, a scowl), mourning (a tear and a
   frown), whispering (rising sound), generosity (smooth forms, or spines when it is low),

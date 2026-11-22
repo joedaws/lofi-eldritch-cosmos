@@ -27,7 +27,7 @@ defmodule Lofi.PortraitTest do
     bodies = for n <- ~w(Ulth Qeb Kol Hask Vrin Sable Ithikka Morrow), do: Features.anatomy(n)
 
     assert bodies
-           |> Enum.map(&{&1["form"], &1["palette"], &1["limbs"]})
+           |> Enum.map(&{&1["form"], &1["hero"], &1["ground"]})
            |> Enum.uniq()
            |> length() > 4
   end
@@ -87,7 +87,10 @@ defmodule Lofi.PortraitTest do
   test "every form carries every hero feature, in colour and in silhouette" do
     base = Portrait.features(@calm)
 
-    for form <- Features.forms(), hero <- Features.heroes(), eyes <- [1, 4], faded <- [false, true] do
+    for form <- Features.forms(),
+        hero <- Features.heroes(),
+        eyes <- [1, 4],
+        faded <- [false, true] do
       f =
         base
         |> put_in(["anatomy", "form"], form)

@@ -10,12 +10,16 @@ defmodule Lofi.Portrait.Features do
   @forms ~w(bulb spire maw cluster veil)
   @limbs ~w(tentacles horns antlers fronds none)
   @markings ~w(rings dots runes veins)
-  @palettes ~w(verdigris oxblood ochre dusk seaglass moss bone ember)
+  # ink tone of the body: pale screentone, mid screentone, or near-black
+  @tones ~w(light light mid mid dark)
+  # what it stands before: manga focus lines, a megastructure, rain, or the void
+  @grounds ~w(focus structure rain void)
   # the one thing you remember about a being after two seconds
   @heroes ~w(great_eye crown antlers frill halo_eyes mask maw beard)
 
   def forms(), do: @forms
-  def palettes(), do: @palettes
+  def tones(), do: Enum.uniq(@tones)
+  def grounds(), do: @grounds
   def heroes(), do: @heroes
 
   @doc "Features of a being view (map with \"name\", \"status\", \"psyche\", …) or of a bare name"
@@ -23,7 +27,7 @@ defmodule Lofi.Portrait.Features do
 
   def from(%{"name" => name} = being) do
     name = String.trim(name || "") |> then(&if(&1 == "", do: "?", else: &1))
-    %{"version" => 2, "name" => name, "anatomy" => anatomy(name), "mood" => mood(being)}
+    %{"version" => 3, "name" => name, "anatomy" => anatomy(name), "mood" => mood(being)}
   end
 
   @doc """
@@ -44,7 +48,10 @@ defmodule Lofi.Portrait.Features do
       "limbs" => limbs,
       "limb_count" => if(limbs == "none", do: 0, else: 2 + rem(div(seed, 7), 5)),
       "markings" => pick(@markings, seed, :markings),
-      "palette" => pick(@palettes, seed, :palette),
+      "tone" => pick(@tones, seed, :tone),
+      "ground" => pick(@grounds, seed, :ground),
+      # cables, ports and segmented plates
+      "biomech" => rem(div(seed, 29), 2) == 0,
       "hero" => pick(@heroes, seed, :hero),
       # proportions: how much of it is head, how it leans, how close it looms
       "head" => pick(~w(small medium large), seed, :head),

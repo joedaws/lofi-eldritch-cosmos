@@ -4,19 +4,21 @@ defmodule Lofi.Portrait.Prompt do
   (`Lofi.Portrait.ImageModel`), also handy for agents and alt text.
   """
 
-  @style "Lo-fi eldritch portrait, risograph print: two spot inks and black overprinted " <>
-           "on cream paper, halftone shading, slight misregistration, paper grain, strong " <>
-           "silhouette, the creature looming large and cropped by the frame, no text."
+  @style "Eldritch creature portrait as a black-and-white manga ink drawing: heavy spotted " <>
+           "blacks, dense cross-hatching in the shadows, screentone greys, bold varied linework, " <>
+           "the creature looming large and cropped by the frame, no colour, no text."
 
-  @palettes %{
-    "verdigris" => "teal and orange inks",
-    "oxblood" => "burgundy and sunflower-yellow inks",
-    "ochre" => "mustard and blue inks",
-    "dusk" => "purple and green inks",
-    "seaglass" => "aqua and bright red inks",
-    "moss" => "green and fluorescent pink inks",
-    "bone" => "grey and bright red inks",
-    "ember" => "federal blue and orange inks"
+  @tones %{
+    "light" => "its hide a pale screentone",
+    "mid" => "its hide a mid-grey screentone",
+    "dark" => "its hide near-black ink with white highlights"
+  }
+
+  @grounds %{
+    "focus" => "radiating manga focus lines behind it",
+    "structure" => "vast hatched megastructure pillars behind it",
+    "rain" => "slanting rain hatched across the background",
+    "void" => "a black void behind it, lit only at its edges"
   }
 
   @heroes %{
@@ -45,7 +47,8 @@ defmodule Lofi.Portrait.Prompt do
       @style,
       "A being#{if name, do: " named #{name}", else: ""}: #{@forms[a["form"]]}, " <>
         "#{count(a["eyes"], "eye")}#{limbs(a)}, marked with #{a["markings"]}, " <>
-        "in #{@palettes[a["palette"]]}." <>
+        "#{@tones[a["tone"]]}#{if a["biomech"], do: ", cables and segmented plates growing from its flesh", else: ""}, " <>
+        "#{@grounds[a["ground"]]}." <>
         if(a["hero"], do: " Above all, it has #{@heroes[a["hero"]]}.", else: ""),
       mood(m)
     ]
