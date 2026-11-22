@@ -3,7 +3,7 @@ defmodule LofiWeb.WorldView do
   The world as one person may see it.
 
   `Eldritch.World.snapshot/1` knows owners only by id. Here owners get their
-  display names, and a snapshot taken for nobody in particular (the one the
+  display names, beings get their portraits' URLs (`Lofi.Portrait.url/1`), and a snapshot taken for nobody in particular (the one the
   broadcaster pushes to every viewer) is personalised for each viewer: which
   being is theirs, which whispers they may answer, and the words of their own
   cards. Other people's cards never leave the server.
@@ -13,7 +13,13 @@ defmodule LofiWeb.WorldView do
   def name_owners(world) do
     ids = world["beings"] |> Enum.map(& &1["owner_id"]) |> Enum.reject(&is_nil/1) |> Enum.uniq()
     names = Map.new(Lofi.Accounts.get_users(ids), &{&1.id, &1.display_name})
-    %{world | "beings" => Enum.map(world["beings"], &Map.put(&1, "owner", names[&1["owner_id"]]))}
+
+    beings =
+      Enum.map(world["beings"], fn b ->
+        Map.merge(b, %{"owner" => names[b["owner_id"]], "portrait" => Lofi.Portrait.url(b)})
+      end)
+
+    %{world | "beings" => beings}
   end
 
   @doc """
@@ -28,7 +34,9 @@ defmodule LofiWeb.WorldView do
         cond do
           mine && b["id"] == mine["id"] ->
             # the viewer's own being, seen with their eyes (their card's words)
-            mine |> Eldritch.World.being_view(user_id) |> Map.put("owner", b["owner"])
+            mine
+            |> Eldritch.World.being_view(user_id)
+            |> Map.merge(Map.take(b, ["owner", "portrait"]))
 
           true ->
             Map.merge(b, %{

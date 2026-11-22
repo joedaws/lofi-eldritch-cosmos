@@ -20,8 +20,8 @@ defmodule Lofi.Agent do
       name: "my_being",
       description:
         "The person's being in the cosmos: its state, thought, desire, ichor, psyche (lack, " <>
-          "registers, symptom), temperament, and how much grace is left before it withers for " <>
-          "want of answers. Null if the person has not summoned one yet.",
+          "registers, symptom), temperament, its portrait's address, and how much grace is left " <>
+          "before it withers for want of answers. Null if the person has not summoned one yet.",
       input: %{}
     },
     %{
@@ -186,7 +186,9 @@ defmodule Lofi.Agent do
           "temperament" => Temperament.new(vals["temperament"] || %{}),
           "grace_left_ms" => Life.grace_left_ms(vals),
           "withering" => Life.condition(vals) != :vital,
-          "bond_count" => map_size(vals["bonds"] || %{})
+          "bond_count" => map_size(vals["bonds"] || %{}),
+          # a path on the cosmos's site; /portraits/:id/features describes it in words
+          "portrait" => vals |> Eldritch.World.being_view(user.id) |> Lofi.Portrait.url()
         })
     end
   end

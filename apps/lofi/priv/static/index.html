@@ -137,7 +137,8 @@
     background: repeating-conic-gradient(#0b1719 0 25%, #071012 0 50%) 0 0 / 4px 4px; }
   .overlay .card { max-width: 380px; width: calc(100% - 32px); text-align: left; box-shadow: 5px 5px 0 #000; }
   .overlay p { color: var(--muted); line-height: 1.5; }
-  .form-grid { display: grid; gap: 6px; margin-top: 8px; }
+  .form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; margin-top: 8px; }
+  .form-grid select { min-width: 0; max-width: 100%; }
   .form-grid label { font-size: 11.5px; color: var(--muted); }
   .error { color: var(--danger); font-size: 12px; margin-top: 6px; }
 
@@ -169,6 +170,14 @@
   .deck .acts { grid-row: 1 / span 3; grid-column: 2; display: flex; flex-direction: column; gap: 4px; align-self: start; }
   .deck .acts button { padding: 2px 7px; font-size: 11px; }
   .deck li.awaiting { background: #f0dc8f; }
+  /* portraits (Lofi.Portrait): kept as live elements so a re-render doesn't reload them */
+  .being-head { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .being-head > div { min-width: 0; display: grid; gap: 4px; }
+  .portrait-slot img, img.portrait { display: block; width: 100%; height: auto; box-shadow: 3px 3px 0 var(--ink); }
+  .portrait-slot { width: 92px; aspect-ratio: 200 / 260; background: var(--putty-2); }
+  .summon-preview { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .summon-preview .portrait-slot { width: 120px; }
+  img.thumb { width: 26px; height: 30px; object-fit: cover; border: 1px solid var(--ink); vertical-align: middle; margin-right: 6px; background: var(--putty-2); }
   .mine-mark { color: var(--accent); font-weight: 600; }
   .journal { list-style: none; margin: 0; padding: 0; border: 1px solid var(--ink); background: var(--putty-3); font-size: 11.5px; }
   .journal li { padding: 4px 8px; border-bottom: 1px dashed var(--faint); display: grid; grid-template-columns: 1fr auto; gap: 8px; }
@@ -284,6 +293,28 @@
   const resColor = (r) => RESOURCE_COLORS[r] || "#bbb";
   // only touch the DOM when the markup really changed, so clicks are never lost to a re-render
   const setHTML = (el, html) => { if (el._html !== html) { el._html = html; el.innerHTML = html; } };
+
+  // ---------- portraits ----------
+  // one live <img> per URL: the panel's HTML is rebuilt every tick, the image is moved, not reloaded
+  const portraits = new Map();
+  // `place` keeps one element per spot, so the inspector and My being don't steal each other's image
+  function portraitSlot(url, alt, place) {
+    return url ? `<div class="portrait-slot" data-portrait="${esc(url)}" data-place="${place}" data-alt="${esc(alt || "")}"></div>` : "";
+  }
+  function fillPortraits(root) {
+    for (const slot of root.querySelectorAll(".portrait-slot[data-portrait]")) {
+      const url = slot.dataset.portrait, key = `${slot.dataset.place || ""}|${url}`;
+      if (slot.firstChild && slot.firstChild.dataset.key === key) continue;
+      let img = portraits.get(key);
+      if (!img) {
+        img = new Image(200, 260); img.dataset.key = key; img.src = url; img.alt = slot.dataset.alt;
+        portraits.set(key, img);
+        if (portraits.size > 300) portraits.delete(portraits.keys().next().value);
+      }
+      slot.replaceChildren(img);
+    }
+  }
+  const thumb = (b) => b.portrait ? `<img class="thumb" src="${esc(b.portrait)}&frame=0" alt="" loading="lazy">` : "";
 
   // ---------- api ----------
   async function api(path, body, method) {
@@ -825,6 +856,7 @@
     } else {
       setHTML(sel, nodeCard(state.nodes.get(state.selected.id)));
     }
+    fillPortraits(sel);
     renderTab();
   }
 
@@ -854,8 +886,10 @@
     const fb = state.feedback && state.feedback.id === b.id ? `<div class="feedback ${state.feedback.good ? "good" : "bad"}">${esc(state.feedback.text)}</div>` : "";
     const lin = b.lineage || {};
     return `<div class="card">
+      <div class="${b.portrait ? "being-head" : ""}">${portraitSlot(b.portrait, `Portrait of ${b.name}`, "card")}<div>
       <div class="row"><h2>${esc(b.name)}</h2><span class="chip">${b.status === "faded" ? "faded" : esc(b.intent || "")}</span></div>
       <div class="thought">“${esc(b.thought || "…")}”</div>
+      </div></div>
       <div class="row"><span>ichor</span><span>${b.ichor} / ${b.max_ichor}</span></div>
       <div class="bar"><i style="width:${pct}%;background:${ichorCol}"></i></div>
       <div class="row"><span>belongs to</span><span>${b.mine ? '<span class="mine-mark">you</span>' : b.owner ? esc(b.owner) : "the commons"}</span></div>
@@ -952,10 +986,15 @@
         setHTML(body, myBeingPanel());
         body._mineVersion = state.mineVersion; body._mineEditing = state.editingCard;
       }
+      // the portrait follows its mood without redrawing the panel (unsaved sliders survive)
+      const live = state.me?.being && state.beings.get(state.me.being.id), slot = body.querySelector('.portrait-slot[data-place="mine"]');
+      if (slot && live?.portrait) slot.dataset.portrait = live.portrait;
+      else if (live?.portrait && state.me?.being) body._mineVersion = null; // drawn before its being reached the map: redraw next tick
+      fillPortraits(body);
     } else {
       const list = [...state.beings.values()].sort((a, b) => (a.status === b.status ? b.ichor - a.ichor : a.status === "faded" ? 1 : -1));
       setHTML(body, list.length
-        ? `<ul class="events">${list.map((b) => `<li data-being="${esc(b.id)}" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span>${esc(b.name)}${b.mine ? ' <span class="mine-mark">(yours)</span>' : b.owner ? ` <span style="color:var(--faint)">· ${esc(b.owner)}</span>` : ""}</span><span style="color:var(--muted)">${b.status === "faded" ? "faded" : `${b.ichor} ichor · ${esc(b.intent)}`}</span></li>`).join("")}</ul>`
+        ? `<ul class="events">${list.map((b) => `<li data-being="${esc(b.id)}" style="cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span>${thumb(b)}${esc(b.name)}${b.mine ? ' <span class="mine-mark">(yours)</span>' : b.owner ? ` <span style="color:var(--faint)">· ${esc(b.owner)}</span>` : ""}</span><span style="color:var(--muted)">${b.status === "faded" ? "faded" : `${b.ichor} ichor · ${esc(b.intent)}`}</span></li>`).join("")}</ul>`
         : '<div class="empty">No beings exist.</div>');
     }
   }
@@ -976,8 +1015,14 @@
         <h2>Summon your being</h2>
         <p class="empty" style="font-style:normal">You may summon one being into the cosmos. It will live by its own will, shaped by its temperament. Give it incantations to whisper: answering them is what keeps it alive.</p>
         <form class="form-grid" data-mine="summon">
-          <label for="mb-name">Name (leave empty for one from the grimoire)</label>
-          <input type="text" id="mb-name" name="name" maxlength="32">
+          <div class="summon-preview">
+            <div class="portrait-slot" id="mb-preview" data-place="preview" data-alt="Portrait preview"></div>
+            <div style="display:grid;gap:6px;min-width:0">
+              <label for="mb-name">Name (leave empty for one from the grimoire)</label>
+              <input type="text" id="mb-name" name="name" maxlength="32">
+              <span class="empty" id="mb-preview-note" style="font-style:normal">Its name shapes its body: type one to see who you would summon.</span>
+            </div>
+          </div>
           <label for="mb-place">Where it awakens</label>
           <select id="mb-place" name="at_node" style="font:inherit;padding:5px;border:1px solid var(--ink);background:var(--putty-3)">
             <option value="">wherever the cosmos chooses</option>
@@ -994,9 +1039,11 @@
     const live = state.beings.get(mine.id);
     const cards = mine.cards || [];
     return `<div class="card">
+      <div class="${live?.portrait ? "being-head" : ""}">${portraitSlot(live?.portrait, `Portrait of ${mine.name}`, "mine")}<div>
       <div class="row"><h2>${esc(mine.name)}</h2>${live && live.status === "faded" ? '<span class="chip">faded: answer its whispers to call it back</span>' : ""}</div>
       <div class="row"><span>vitality</span><span>${mine.grace_left_ms > 0 ? `${fmtMs(mine.grace_left_ms)} of grace left` : '<span style="color:var(--danger)">withering: answer its whispers</span>'}</span></div>
       <p class="empty" style="font-style:normal">Each answer you give it restores ${fmtMs(mine.grace_ms)} of grace. Left unanswered longer, it withers and fades; an answer calls it back.</p>
+      </div></div>
       <div class="controls"><button data-being="${esc(mine.id)}">Find it on the map</button></div>
       <h3>Temperament</h3>
       <form class="form-grid" data-mine="temperament">
@@ -1101,6 +1148,21 @@
     // beings are followed by the camera (see draw)
     if (n) { state.view.x = n.wx; state.view.y = n.wy; }
   }
+
+  // the summon form previews the body a name gives
+  let previewTimer = null;
+  document.querySelector("aside").addEventListener("input", (e) => {
+    if (e.target.id !== "mb-name") return;
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => {
+      const slot = $("mb-preview"), name = e.target.value.trim();
+      if (!slot) return;
+      if (!name) { slot.replaceChildren(); return; }
+      slot.dataset.portrait = `/portraits/preview?name=${encodeURIComponent(name)}`;
+      fillPortraits(slot.parentElement);
+      $("mb-preview-note").textContent = "The cosmos will give it this body. Its mood will change as it lives.";
+    }, 250);
+  });
 
   document.querySelector("aside").addEventListener("submit", async (e) => {
     e.preventDefault();

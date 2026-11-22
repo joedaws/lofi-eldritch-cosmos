@@ -103,6 +103,8 @@ in may answer their whispers.
 - Click a being to follow it and see its owner, thoughts, desire, psyche, inventory, bonds,
   lineage and incantation. **Beckon…** then click a place to draw your being there.
 - Click a place to see who is there (the keeper can also summon beings of the commons).
+- Every being has a **portrait** (see below): in its card, on the My being tab, as a
+  thumbnail in the Beings list, and as a live preview while you choose a name to summon.
 - **Bonds** draws the strong bonds between all beings (green: affinity, red: rivalry).
 - The keeper's speed slider sets the tick duration (100ms – 3s). **New cosmos** unmakes and reseeds.
 
@@ -212,6 +214,35 @@ watching, and each channel tailors it to its viewer (their being, their cards, w
 may answer) before pushing it; messages are compressed. If no push arrives for 3 seconds
 the page falls back to polling `GET /world`.
 
+## Portraits
+
+`Lofi.Portrait` draws every being from its *features* (`Lofi.Portrait.Features`):
+
+- **Anatomy comes from the name alone**, so a being keeps its face all its life and a name
+  can be previewed before summoning. The number of parts in the name (`Gor Lop~Tome` → 3)
+  is its number of eyes; a hash of the name picks its form (bulb, spire, maw, cluster,
+  veil), limbs (tentacles, horns, antlers, fronds), markings, palette and symmetry.
+- **Mood comes from its state**, in a few coarse levels so the portrait changes only when
+  something meaningful does: ichor (pale and open-mouthed when starving, glowing when
+  full), lack (pupils widen), the dominant register (Real: a jagged outline; Symbolic: a
+  ring of runes; Imaginary: mirror symmetry and a shimmering double), a loosened knot (the
+  ring breaks), mourning (a tear), whispering (rising sound), its desire and revealed
+  objet a (tokens in the corners), wanderlust (longer limbs), and fading (grey, cracked,
+  eyes closed).
+
+Renderers implement `Lofi.Portrait.Renderer`. The default, `Lofi.Portrait.Svg`, draws in
+code (about 0.3 ms and 8 KB per portrait). `Lofi.Portrait.ImageModel` is the scaffold for
+an AI image model: it turns features into a prompt (`Lofi.Portrait.Prompt`), calls a
+function you configure, keeps each result on disk, and falls back to the SVG:
+
+```elixir
+config :lofi, Lofi.Portrait, renderer: Lofi.Portrait.ImageModel
+config :lofi, Lofi.Portrait.ImageModel, generate: {MyImageApi, :generate}  # (prompt, seed) -> {:ok, png}
+```
+
+Every being in a world snapshot carries `portrait`, a URL whose `?v=` tag changes with
+the portrait, so browsers cache each one for a day.
+
 ## HTTP API
 
 Writes use the browser session and need the CSRF token from `GET /api/me`
@@ -223,6 +254,9 @@ Writes use the browser session and need the CSRF token from `GET /api/me`
 | `GET /world?since=SEQ` | anyone | | places, beings (as you may see them), simulation status, chronicle after `SEQ` |
 | `GET /beings`, `GET /nodes`, `GET /being?id=ID` | anyone | | ids / one being (its deck reduced to a count) |
 | `GET /api/me` | anyone | | you, your being with its deck, the CSRF token |
+| `GET /portraits/:id` | anyone | | a being's portrait as it is now (SVG; `?frame=0` without frame and name) |
+| `GET /portraits/preview?name=` | anyone | | the body a name would give |
+| `GET /portraits/:id/features` | anyone | | what the portrait shows, and the prompt for an image model |
 | `POST /api/my/being` | signed in | `name`, `at_node`, `cards: [{front, back}]`, `temperament` | summon your one being |
 | `PUT /api/my/temperament` | signed in | `generosity`, `wanderlust`, `sociability`, `conformity` | |
 | `POST /api/my/cards` · `PUT`/`DELETE /api/my/cards/:id` | signed in | `front`, `back` | edit your deck |
@@ -272,6 +306,10 @@ Production settings (in `/etc/lofi.env`, see `infra/lofi.env.example`): `SECRET_
 - [x] Lives on the clock: commons beings live days, owned beings live by their owner's
   remembering, a dwindling cosmos dreams new beings, husks crumble
 - [ ] Ranks or roles, toward social organization
+- [x] Portraits of beings, drawn from their names and moods (SVG), with a scaffold for an
+  AI image model
+- [ ] Portraits: an image model behind `Lofi.Portrait.ImageModel` (generated in the
+  background), portraits on the map on hover, and in the static demo
 - [ ] Deploy (one server, SQLite with backups) with a mail provider for login links:
   planned beside the wish list on the Hetzner server under systemd, deploying on every
   push to `main`; waiting on the domain. See [docs/deployment-handoff.md](docs/deployment-handoff.md)

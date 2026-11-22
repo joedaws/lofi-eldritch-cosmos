@@ -56,6 +56,13 @@ defmodule LofiWeb.Router do
     get "/api/me", MeController, :show
   end
 
+  # Portraits of beings: images, so no JSON pipeline
+  scope "/portraits", LofiWeb do
+    get "/preview", PortraitController, :preview
+    get "/:id", PortraitController, :show
+    get "/:id/features", PortraitController, :features
+  end
+
   # Signed-in people tend their own being (and the commons)
   scope "/", LofiWeb do
     pipe_through [:api, :signed_in]
