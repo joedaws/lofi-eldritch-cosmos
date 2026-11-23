@@ -1,25 +1,32 @@
 defmodule Lofi.Portrait.Svg do
   @moduledoc """
-  Procedural portraits, drawn as SVG in black-and-white ink, in the manner of
-  horror manga, inside a classic Mac OS window:
+  Procedural portraits, drawn as SVG in black-and-white ink inside a classic
+  Mac OS window.
 
-    * greys only: screentone dots for tone, hatching for shadow and
-      cross-hatching for the deepest shadow, solid spotted blacks for focus;
-    * **silhouette first**: a head and a torso in proportions taken from the
-      name, limbs and spines that break the outline, a creature that looms
-      and spills out of the frame;
-    * **one hero feature** (`anatomy["hero"]`), the darkest mass or the
-      brightest white, so the eye goes there first;
-    * biomechanical beings grow cables, ports and segmented plates;
-    * the ground behind it: manga focus lines, a hatched megastructure,
-      slanting rain, or a black void that lights it only at its edges;
-    * **light**: hatching on the far side, contour lines following the body,
-      a rim of bare paper on the near side;
-    * **expression** from mood: brows, lids and mouth.
+  Every being is the **same figure**: a dark hooded robe filling the frame,
+  its face a black hollow. What tells beings apart is the **mask** over that
+  hollow, in bare bone against the dark:
+
+    * its **outline** (skull, oval, beak, shield, moon, slab, lantern, visor),
+      the first thing you read at a glance;
+    * its **eye holes**, one per part of the name, in one of a few shapes,
+      with pale pupils glinting in the black;
+    * a **mouth** (stitches, a grille, a slit, teeth, a smile, or none) and a
+      **mark** (a stripe, tears, runes, a split, dots);
+    * what **crowns** it: horns, antlers, a crown, a halo, spikes, ears that
+      break the hood's outline, or nothing;
+    * the hood (round, peaked, deep) and what it stands before (manga focus
+      lines, a hatched megastructure, rain, or the void).
+
+  **Mood** shows in how the mask sits and what surrounds the figure: a mask
+  slipping askew when starved, blazing eyes when full, wide pupils with
+  lack, cracks for the Real, a ring of runes for the Symbolic, a double for
+  the Imaginary, a tear in mourning, an open hand when generous, a staff
+  when it wanders, and a grey robe and empty eyes once it has faded.
 
   Everything random is a hash of the name's seed and a label (`rand/2`), so a
-  name always gives the same creature. `silhouette: true` draws only the
-  filled silhouette, for judging designs.
+  name always gives the same mask. `silhouette: true` draws only the figure
+  and the mask's outline, for judging whether masks read and differ.
   """
   @behaviour Lofi.Portrait.Renderer
 
@@ -31,11 +38,25 @@ defmodule Lofi.Portrait.Svg do
   @title 26
 
   @paper "#ebe9e4"
+  @bone "#f8f7f3"
   @light "#cfccc5"
   @mid "#8f8b84"
   @darkest "#2a2926"
   @black "#111110"
   @platinum "#d4d1ca"
+
+  # per mask: top edge, eye row, mouth row and mouth half-width (nil: no mouth),
+  # in units of the mask's half-width, y down
+  @masks %{
+    "skull" => %{top: -1.25, eyes: -0.2, mouth: {0.9, 0.3}},
+    "oval" => %{top: -1.2, eyes: -0.15, mouth: {0.68, 0.3}},
+    "beak" => %{top: -1.15, eyes: -0.35, mouth: nil},
+    "shield" => %{top: -1.1, eyes: -0.2, mouth: {0.72, 0.32}},
+    "moon" => %{top: -1.0, eyes: -0.1, mouth: {0.55, 0.3}},
+    "slab" => %{top: -1.3, eyes: -0.25, mouth: {0.82, 0.34}},
+    "lantern" => %{top: -1.35, eyes: -0.15, mouth: {0.75, 0.3}},
+    "visor" => %{top: -0.8, eyes: -0.24, mouth: nil}
+  }
 
   @impl true
   def render(%{"anatomy" => a} = features, opts) do
@@ -51,9 +72,8 @@ defmodule Lofi.Portrait.Svg do
       if Keyword.get(opts, :silhouette, false) do
         [
           ~s|<rect x="#{ax}" y="#{ay}" width="#{aw}" height="#{ah}" fill="#{@paper}"/>|,
-          use(id, "heroback", @black),
           use(id, "shape", @black),
-          use(id, "herofront", @black)
+          ~s|<g transform="#{tilt(r)}"><path d="#{mask_d(r)}" fill="#{@paper}"/></g>|
         ]
       else
         layers(a, m, r, id)
@@ -79,132 +99,59 @@ defmodule Lofi.Portrait.Svg do
   defp rig(a, m) do
     s = a["seed"]
     j = fn key, lo, hi -> lo + (hi - lo) * rand(s, key) end
-    head_k = %{"small" => 0.82, "medium" => 1.0, "large" => 1.2}[a["head"]] || 1.0
-    lean = (%{"left" => -1, "none" => 0, "right" => 1}[a["lean"]] || 0) * j.(:lean, 8, 18)
+    k = j.(:scale, 0.95, 1.05)
+    hx = 100 + j.(:ox, -6, 6)
+    hood = a["hood"] || "round"
+    faded = m["faded"] == true
+    starved = not faded and (m["vigor"] || 2) <= 1
 
-    {torso, heads, neck, opts} =
-      case a["form"] do
-        "bulb" ->
-          th = j.(:th, 30, 40)
-          hr = j.(:hr, 48, 56) * head_k
-
-          {{100, 226, j.(:tw, 34, 44), th}, [{100 + lean * 0.5, 226 - th - hr * 0.45, hr}], 0,
-           %{}}
-
-        "spire" ->
-          {{100, 236, j.(:tw, 30, 40), j.(:th, 84, 100)},
-           [{100 + lean, j.(:hy, 66, 80), j.(:hr, 25, 31) * head_k}], j.(:nw, 9, 13),
-           %{taper: 0.3}}
-
-        "maw" ->
-          th = j.(:th, 64, 76)
-          hr = j.(:hr, 30, 36) * head_k
-
-          {{100, 220, j.(:tw, 74, 86), th}, [{100 + lean * 0.6, 220 - th - hr * 0.2, hr}], 0,
-           %{taper: 0.15}}
-
-        "cluster" ->
-          count = 2 + rem(div(s, 11), 2)
-
-          heads =
-            for i <- 0..(count - 1) do
-              t = -0.85 + 1.7 * i / (count - 1)
-              rr = j.({:hr, i}, 25, 32) * head_k
-
-              {100 + :math.sin(t) * 56 + lean * 0.4,
-               128 - :math.cos(t) * 52 + j.({:hy, i}, -6, 6), rr}
-            end
-
-          {{100, 228, j.(:tw, 54, 62), j.(:th, 60, 70)}, heads, j.(:nw, 8, 11), %{taper: 0.2}}
-
-        "veil" ->
-          {{100, 244, j.(:tw, 60, 70), j.(:th, 140, 156)},
-           [{100 + lean * 0.3, j.(:hy, 114, 126), j.(:hr, 26, 31) * head_k}], 0,
-           %{taper: 0.55, hood: true}}
+    {hw, top, deep} =
+      case hood do
+        "peaked" -> {44 * k, 10, 0}
+        "deep" -> {51 * k, 24, 6}
+        _ -> {46 * k, 20, 0}
       end
 
-    # loom: scale about the bottom centre, then keep the head(s) inside the top
-    scale = if a["looming"], do: j.(:loom, 1.18, 1.32), else: j.(:scale, 0.94, 1.08)
-    shift = j.(:ox, -9, 9)
-    place = fn {x, y} -> {100 + (x - 100) * scale + shift, @bottom + (y - @bottom) * scale} end
+    fy = 84 + deep
+    droop = if rand(s, :droop) > 0.5, do: 1, else: -1
 
-    {tx, ty, trx, try_} = torso
-    {tx, ty} = place.({tx, ty})
+    tilt =
+      cond do
+        m["register"] == "imaginary" -> 0.0
+        faded -> droop * 14.0
+        starved -> droop * 8.0
+        true -> j.(:tilt, -3, 3)
+      end
 
-    heads =
-      for {hx, hy, hr} <- heads, do: place.({hx, hy}) |> then(fn {x, y} -> {x, y, hr * scale} end)
+    mask = if Map.has_key?(@masks, a["mask"]), do: a["mask"], else: "oval"
 
-    top = heads |> Enum.map(fn {_x, y, hr} -> y - hr end) |> Enum.min()
-    down = max(0.0, 22 - top)
-    heads = for {hx, hy, hr} <- heads, do: {hx, hy + down, hr}
-
-    r = %{
+    %{
       seed: s,
-      hero: a["hero"],
-      tone: if(m["faded"], do: "light", else: a["tone"] || "light"),
-      ground: a["ground"] || "focus",
-      biomech: a["biomech"] == true,
-      torso: {tx, ty + down, trx * scale, try_ * scale},
-      heads: heads,
-      neck: neck * scale,
-      taper: Map.get(opts, :taper, 0.0),
-      hood: Map.get(opts, :hood, false),
+      hood: hood,
+      hx: hx,
+      hw: hw,
+      top: top,
+      base: 132,
+      sw: j.(:sw, 64, 72) * k,
+      tip: hx + j.(:tip, -7, 7),
+      face: {hx, fy, 30 * k * if(deep > 0, do: 1.06, else: 1.0), 39 * k},
+      mx: hx,
+      my: fy + 2 + if(starved or faded, do: 4, else: 0),
+      mw: 23.5 * k,
+      tilt: tilt,
       light: if(a["light"] == "left", do: -1, else: 1),
-      symmetric: a["symmetric"] == true or m["register"] == "imaginary",
-      jagged: m["register"] == "real",
-      smooth: m["generosity"] == 2,
-      spines: m["generosity"] == 0 or m["register"] == "real"
+      ground: a["ground"] || "focus",
+      mask: mask,
+      meta: @masks[mask],
+      crest: a["crest"] || "none",
+      faded: faded
     }
-
-    Map.put(r, :limbs, limb_specs(r, m))
   end
 
-  # every limb and neck, as {root, control, tip, root width, tip width, layer}
-  defp limb_specs(r, m) do
-    {tx, ty, trx, try_} = r.torso
-
-    necks =
-      if r.neck > 0 do
-        for {{hx, hy, _hr}, i} <- Enum.with_index(r.heads) do
-          {fx, fy} = {tx + (hx - tx) * 0.35, ty - try_ * 0.82}
-          ctrl = {(fx + hx) / 2 + (rand(r.seed, {:neck, i}) - 0.5) * 20, (fy + hy) / 2}
-          {{fx, fy}, ctrl, {hx, hy}, r.neck, r.neck * 0.8, :neck}
-        end
-      else
-        []
-      end
-
-    count = rem(div(r.seed, 7), 3) + 2
-
-    sides =
-      for i <- 0..(count - 1) do
-        layer = if rem(i, 4) >= 2, do: :front, else: :behind
-        side = if rem(i, 2) == 0, do: -1, else: 1
-        row = div(i, 2)
-        x0 = tx + side * trx * (0.78 - 0.18 * row)
-        y0 = ty - try_ * (0.62 - 0.22 * row)
-        len = 50 + 14 * (m["wanderlust"] || 1) + 22 * rand(r.seed, {:ll, i})
-
-        {ctrl, tip} =
-          cond do
-            layer == :front ->
-              {{x0 + side * len * 0.45, y0 + len * 0.35},
-               {x0 + side * len * 0.15, y0 + len * 0.95}}
-
-            rand(r.seed, {:reach, i}) > 0.5 ->
-              {{x0 + side * len * 0.75, y0 + len * 0.1},
-               {x0 + side * len * 0.85, y0 - len * 0.65}}
-
-            true ->
-              {{x0 + side * len * 0.55, y0 + len * 0.75},
-               {x0 + side * len * 0.95, y0 + len * 0.25}}
-          end
-
-        {{x0, y0}, ctrl, tip, 9.5, 0.8, layer}
-      end
-
-    necks ++ sides
-  end
+  # a point on the mask, in units of its half-width (before it is tilted)
+  defp pt(r, u, v), do: {r.mx + u * r.mw, r.my + v * r.mw}
+  defp tilt(r), do: "rotate(#{n(r.tilt)} #{n(r.mx)} #{n(r.my)})"
+  defp head(r), do: {r.hx, r.top + 52, r.hw}
 
   # ---------- defs ----------
 
@@ -215,14 +162,9 @@ defmodule Lofi.Portrait.Svg do
     [
       "<defs>",
       ~s|<clipPath id="#{id}-art"><rect x="#{ax}" y="#{ay}" width="#{aw}" height="#{ah}"/></clipPath>|,
+      ~s|<clipPath id="#{id}-face"><path d="#{mask_d(r)}"/></clipPath>|,
       ~s|<g id="#{id}-shape">|,
       body_shapes(r),
-      "</g>",
-      ~s|<g id="#{id}-heroback">|,
-      hero_back(r),
-      "</g>",
-      ~s|<g id="#{id}-herofront">|,
-      hero_front(r, m),
       "</g>",
       mask(id, "body", [use(id, "shape", "#fff")]),
       # the far side from the light; and deeper still, its core
@@ -244,13 +186,7 @@ defmodule Lofi.Portrait.Svg do
       mask(id, "outline", [
         ~s|<g stroke="#fff" stroke-width="#{if m["vigor"] >= 4, do: 5.6, else: 4.4}">|,
         use(id, "shape", "#fff"),
-        use(id, "heroback", "#fff"),
         "</g>",
-        use(id, "shape", "#000"),
-        use(id, "heroback", "#000")
-      ]),
-      mask(id, "behind", [
-        ~s|<rect x="0" y="0" width="#{@w}" height="#{@h}" fill="#fff"/>|,
         use(id, "shape", "#000")
       ]),
       # screentones and hatching
@@ -311,65 +247,36 @@ defmodule Lofi.Portrait.Svg do
   # ---------- the layers ----------
 
   defp layers(a, m, r, id) do
-    {hx, hy, hr} = main_head(r)
-    eyes = eye_spots(a, r)
     void = r.ground == "void"
     line = if void, do: @paper, else: @black
 
     [
       ground(r, id),
-      # hero parts behind the body: the darkest mass (pale in the void)
-      ~s|<g mask="url(##{id}-behind)">#{use(id, "heroback", if(void, do: @light, else: @black))}</g>|,
+      halo(r, line),
+      staff(m, r, line),
       ring(m, r, line),
       ghost(m, id, line),
       body_ink(r, id),
-      contours(r, id),
+      robe_lines(r, id),
       fill_rect(id, @paper, "rim", ~s| opacity=".9"|),
-      markings(a, r),
-      if(m["faded"], do: cracks(r), else: ""),
-      hood_interior(r),
-      use(
-        id,
-        "herofront",
-        hero_ink(r),
-        nil,
-        ~s| stroke="#{@black}" stroke-width="1.6" stroke-linejoin="round"|
-      ),
-      maw_interior(a, r),
-      ribs(r),
-      cables(r),
-      eye_whites(eyes, m),
-      teeth(a, r),
-      irises(eyes, m, gaze(r)),
-      lids(eyes, m, r),
-      # the ink line: outline, details, pupils, brows, mouth
+      face_hollow(r),
       fill_rect(id, line, "outline"),
-      hero_lines(r),
-      pupils(eyes, m, gaze(r), if(r.hood or r.tone == "dark", do: @paper, else: @black)),
-      brows(eyes, m, {hx, hy, hr}, if(r.tone == "dark", do: @paper, else: @black)),
-      mouth(a, m, r),
-      signs(m, r),
+      ~s|<g transform="#{tilt(r)}">|,
+      crest_behind(r),
+      the_mask(a, m, r, id),
+      crest_front(r),
+      "</g>",
+      hand(m, r),
+      signs(m, r, line),
       ~s|<rect x="0" y="0" width="#{@w}" height="#{@h}" filter="url(##{id}-grain)" opacity=".28"/>|
     ]
-  end
-
-  defp main_head(r), do: hd(r.heads)
-  defp maw?(a, r), do: r.hero == "maw" or a["form"] == "maw"
-
-  # the hero in front is printed as the strongest contrast to the body
-  defp hero_ink(r) do
-    cond do
-      r.hero == "mask" -> @paper
-      r.tone == "dark" -> @paper
-      true -> @black
-    end
   end
 
   # ---------- ground ----------
 
   defp ground(r, id) do
     {ax, ay, aw, ah} = @art
-    {hx, hy, hr} = main_head(r)
+    {hx, hy, hr} = head(r)
     s = r.seed
     base = if r.ground == "void", do: @black, else: @paper
 
@@ -379,7 +286,7 @@ defmodule Lofi.Portrait.Svg do
           # manga focus lines converging on the head, leaving it a clear field
           for i <- 0..89 do
             t = 2 * :math.pi() * (i + rand(s, {:fl, i}) * 0.8) / 90
-            r0 = hr * (1.75 + 0.9 * rand(s, {:fl0, i}))
+            r0 = hr * (1.6 + 0.9 * rand(s, {:fl0, i}))
             r1 = 320
             w = 0.6 + 2.6 * rand(s, {:flw, i})
             {cx, cy} = {hx + r0 * :math.cos(t), hy + r0 * :math.sin(t)}
@@ -441,630 +348,615 @@ defmodule Lofi.Portrait.Svg do
     [~s|<rect x="#{ax}" y="#{ay}" width="#{aw}" height="#{ah}" fill="#{base}"/>|, detail, floor]
   end
 
-  # ---------- the body ----------
+  # ---------- the figure ----------
 
-  defp body_ink(r, id) do
-    case r.tone do
-      "dark" ->
-        [
-          use(id, "shape", @darkest),
-          fill_rect(id, @black, "core"),
-          # what light there is falls in screentone on the near side
-          ~s|<g mask="url(##{id}-body)">#{fill_rect(id, "url(##{id}-ptone)", "lit", ~s| opacity=".55"|)}</g>|
-        ]
-
-      tone ->
-        [
-          use(id, "shape", if(tone == "mid", do: @light, else: @paper)),
-          fill_rect(
-            id,
-            "url(##{id}-#{if tone == "mid", do: "tone2", else: "tone1"})",
-            "body",
-            ~s| opacity=".75"|
-          ),
-          fill_rect(id, "url(##{id}-hatch)", "shade"),
-          fill_rect(id, "url(##{id}-xhatch)", "core")
-        ]
-    end
-  end
-
-  # contour lines that follow the body's form, on its shadowed side
-  defp contours(r, id) do
-    {tx, ty, trx, try_} = r.torso
-    colour = if r.tone == "dark", do: @paper, else: @black
-    opacity = if r.tone == "dark", do: ".45", else: ".7"
-
-    torso =
-      for k <- [0.82, 0.66, 0.5] do
-        ~s|<path d="#{blob(r, :torso, tx, ty, trx * k, try_ * k, taper: r.taper)}" fill="none" stroke="#{colour}" stroke-width=".9"/>|
-      end
-
-    heads =
-      for {{hx, hy, hr}, i} <- Enum.with_index(r.heads), not r.hood, k <- [0.8, 0.6] do
-        squash = 0.86 + 0.26 * rand(r.seed, {:squash, i})
-
-        ~s|<path d="#{blob(r, {:head, i}, hx, hy + hr * 0.08, hr * k, hr * squash * k, [])}" fill="none" stroke="#{colour}" stroke-width=".8"/>|
-      end
-
-    [~s|<g mask="url(##{id}-shade)" opacity="#{opacity}">|, torso, heads, "</g>"]
-  end
-
+  # the hood and the robe below it: always the same figure, in a few cuts
   defp body_shapes(r) do
-    {tx, ty, trx, try_} = r.torso
+    %{hx: hx, hw: hw, top: top, base: base, sw: sw} = r
 
-    torso =
-      blob(r, :torso, tx, ty, trx, try_, taper: r.taper, flare: if(r.hood, do: 0.25, else: 0.0))
+    hood =
+      case r.hood do
+        "peaked" ->
+          ~s|M#{n(hx - hw)} #{base} C#{n(hx - hw - 7)} #{base - 55} #{n(hx - hw * 0.6)} #{top + 24} #{n(r.tip)} #{top} C#{n(hx + hw * 0.6)} #{top + 24} #{n(hx + hw + 7)} #{base - 55} #{n(hx + hw)} #{base}Z|
 
-    limb_paths = fn layer ->
-      for {from, ctrl, tip, w0, w1, ^layer} <- r.limbs,
-          do: ~s|<path d="#{limb(from, ctrl, tip, w0, w1)}"/>|
-    end
-
-    heads =
-      if r.hood do
-        []
-      else
-        for {{hx, hy, hr}, i} <- Enum.with_index(r.heads) do
-          squash = 0.86 + 0.26 * rand(r.seed, {:squash, i})
-          ~s|<path d="#{blob(r, {:head, i}, hx, hy, hr, hr * squash, [])}"/>|
-        end
+        _ ->
+          ~s|M#{n(hx - hw)} #{base} C#{n(hx - hw - 6)} #{base - 50} #{n(hx - hw * 0.78)} #{top} #{n(hx)} #{top} C#{n(hx + hw * 0.78)} #{top} #{n(hx + hw + 6)} #{base - 50} #{n(hx + hw)} #{base}Z|
       end
 
+    robe =
+      ~s|M#{n(hx - hw * 0.8)} #{base - 14} C#{n(hx - sw * 0.7)} #{base - 6} #{n(hx - sw)} #{base + 8} #{n(hx - sw - 2)} #{base + 40} L#{n(hx - sw - 14)} 240 L#{n(hx + sw + 14)} 240 L#{n(hx + sw + 2)} #{base + 40} C#{n(hx + sw)} #{base + 8} #{n(hx + sw * 0.7)} #{base - 6} #{n(hx + hw * 0.8)} #{base - 14}Z|
+
+    ears =
+      if r.crest == "ears" do
+        tip = max(top - 22, 12)
+
+        for side <- [-1, 1] do
+          ~s|<path d="M#{n(hx + side * hw * 0.78)} #{top + 24} L#{n(hx + side * hw * 1.02)} #{tip} L#{n(hx + side * hw * 0.22)} #{top + 5}Z"/>|
+        end
+      else
+        []
+      end
+
+    [~s|<path d="#{robe}"/>|, ~s|<path d="#{hood}"/>|, ears]
+  end
+
+  defp body_ink(%{faded: true}, id) do
+    # faded: the robe goes grey
     [
-      limb_paths.(:behind),
-      ~s|<path d="#{torso}"/>|,
-      limb_paths.(:neck),
-      heads,
-      head_parts(r),
-      spines(r),
-      limb_paths.(:front)
+      use(id, "shape", @light),
+      fill_rect(id, "url(##{id}-tone2)", "body", ~s| opacity=".75"|),
+      fill_rect(id, "url(##{id}-hatch)", "shade"),
+      fill_rect(id, "url(##{id}-xhatch)", "core")
     ]
   end
 
-  # small features on the head itself (the hero feature is separate)
-  defp head_parts(%{hood: true}), do: []
-
-  defp head_parts(r) do
-    {hx, hy, hr} = main_head(r)
-
-    case rem(div(r.seed, 23), 4) do
-      0 ->
-        for side <- [-1, 1] do
-          {bx, by} = {hx + side * hr * 0.6, hy - hr * 0.7}
-
-          ~s|<path d="#{limb({bx, by}, {bx + side * hr * 0.5, by - hr * 0.2}, {bx + side * hr * 0.55, by - hr * 0.75}, hr * 0.13, 0.5)}"/>|
-        end
-
-      1 ->
-        for side <- [-1, 1] do
-          {bx, by} = {hx + side * hr * 0.9, hy - hr * 0.1}
-
-          ~s|<path d="M#{n(bx)} #{n(by - hr * 0.25)} L#{n(bx + side * hr * 0.75)} #{n(by - hr * 0.55)} L#{n(bx + side * hr * 0.35)} #{n(by + hr * 0.25)}Z"/>|
-        end
-
-      _ ->
-        []
-    end
+  defp body_ink(_r, id) do
+    [
+      use(id, "shape", @darkest),
+      fill_rect(id, @black, "core"),
+      # what light there is falls in screentone on the near side
+      ~s|<g mask="url(##{id}-body)">#{fill_rect(id, "url(##{id}-ptone)", "lit", ~s| opacity=".28"|)}</g>|
+    ]
   end
 
-  defp spines(%{spines: false}), do: []
+  # folds of the hood and robe, and the robe's crossed front
+  defp robe_lines(r, id) do
+    %{hx: hx, hw: hw, top: top, base: base, sw: sw} = r
+    {colour, opacity} = if r.faded, do: {@black, ".7"}, else: {@mid, ".6"}
+    stroke = ~s|fill="none" stroke="#{colour}" stroke-linecap="round"|
 
-  defp spines(r) do
-    {tx, ty, trx, try_} = r.torso
+    folds =
+      for x <- [-0.84, -0.5, 0.5, 0.84] do
+        bend = 6 * rand(r.seed, {:fold, x}) - 3
 
-    for i <- 0..6 do
-      t = :math.pi() * (1.18 + 0.64 * i / 6)
-      {x0, y0} = ellipse_pt(tx, ty, trx * 0.97, try_ * 0.97, t - 0.11, r.taper)
-      {x1, y1} = ellipse_pt(tx, ty, trx * 0.97, try_ * 0.97, t + 0.11, r.taper)
-      {px, py} = ellipse_pt(tx, ty, trx * 1.22, try_ * 1.16, t, r.taper)
-      ~s|<path d="M#{n(x0)} #{n(y0)} L#{n(px)} #{n(py)} L#{n(x1)} #{n(y1)}Z"/>|
-    end
-  end
-
-  defp ellipse_pt(cx, cy, rx, ry, t, taper) do
-    s = :math.sin(t)
-    {cx + rx * :math.cos(t) * (1 - taper * max(0.0, -s)), cy + ry * s}
-  end
-
-  # segmented plates across necks and the limbs in front
-  defp ribs(%{biomech: false}), do: []
-
-  defp ribs(r) do
-    colour = if r.tone == "dark", do: @paper, else: @black
-
-    for {from, ctrl, tip, w0, w1, layer} <- r.limbs, layer in [:neck, :front] do
-      for {x, y, nx, ny} <- spine(from, ctrl, tip, w0, w1, 12) |> Enum.slice(2..10) do
-        ~s|<path d="M#{n(x + nx * 0.95)} #{n(y + ny * 0.95)} L#{n(x - nx * 0.95)} #{n(y - ny * 0.95)}" stroke="#{colour}" stroke-width="1.1"/>|
+        ~s|<path d="M#{n(hx + x * sw)} #{base + 26} Q#{n(hx + x * sw * 1.06 + bend)} 196 #{n(hx + x * sw * 1.14)} 240" #{stroke} stroke-width="1.1"/>|
       end
-    end
+
+    hood =
+      for side <- [-1, 1] do
+        ~s|<path d="M#{n(hx + side * hw * 0.5)} #{top + 12} Q#{n(hx + side * hw * 0.9)} #{base - 44} #{n(hx + side * hw * 0.72)} #{base - 4}" #{stroke} stroke-width="1.1"/>|
+      end
+
+    front = [
+      ~s|<path d="M#{n(hx - hw * 0.55)} #{base - 6} Q#{n(hx - 4)} 168 #{n(hx + 18)} 240" #{stroke} stroke-width="1.5"/>|,
+      ~s|<path d="M#{n(hx + hw * 0.55)} #{base - 6} Q#{n(hx + 8)} 150 #{n(hx + 2)} 180" #{stroke} stroke-width="1.5"/>|
+    ]
+
+    [~s|<g mask="url(##{id}-body)" opacity="#{opacity}">|, folds, hood, front, "</g>"]
   end
 
-  # cables hanging from ports in its flesh
-  defp cables(%{biomech: false}), do: []
+  # the black hollow in the hood the mask is set in
+  defp face_hollow(r) do
+    {fx, fy, rx, ry} = r.face
 
-  defp cables(r) do
-    {tx, ty, trx, try_} = r.torso
-    count = 2 + rem(div(r.seed, 31), 3)
-
-    for i <- 0..(count - 1) do
-      side = if rem(i, 2) == 0, do: -1, else: 1
-      t = :math.pi() * (1.25 + 0.5 * rand(r.seed, {:cable, i}))
-      {x0, y0} = ellipse_pt(tx, ty, trx * 0.8, try_ * 0.8, t, r.taper)
-      x1 = x0 + side * (40 + 60 * rand(r.seed, {:cable_x, i}))
-      y1 = @bottom + 10
-      d = "M#{n(x0)} #{n(y0)} Q#{n((x0 + x1) / 2)} #{n(max(y0, y1) + 25)} #{n(x1)} #{n(y1)}"
-
-      [
-        ~s|<path d="#{d}" fill="none" stroke="#{@black}" stroke-width="4"/>|,
-        ~s|<path d="#{d}" fill="none" stroke="#{@paper}" stroke-width="1.4"/>|,
-        ~s|<circle cx="#{n(x0)}" cy="#{n(y0)}" r="3.4" fill="#{@black}"/>|,
-        ~s|<circle cx="#{n(x0)}" cy="#{n(y0)}" r="1.2" fill="#{@paper}"/>|
-      ]
-    end
+    [
+      ~s|<ellipse cx="#{n(fx)}" cy="#{n(fy)}" rx="#{n(rx + 3)}" ry="#{n(ry + 3)}" fill="none" stroke="#{@mid}" stroke-width="1.2" opacity=".5"/>|,
+      ~s|<ellipse cx="#{n(fx)}" cy="#{n(fy)}" rx="#{n(rx)}" ry="#{n(ry)}" fill="#{@black}"/>|
+    ]
   end
 
-  # ---------- the hero feature ----------
+  # ---------- the mask ----------
 
-  defp hero_back(r) do
-    {hx, hy, hr} = main_head(r)
-    s = r.seed
-
-    case r.hero do
-      "crown" ->
-        k = 5 + rem(div(s, 5), 3)
-
-        for i <- 0..(k - 1) do
-          f = i / (k - 1)
-          t = :math.pi() * (1.15 + 0.7 * f)
-          len = hr * (0.7 + 0.35 * rand(s, {:crown, i})) * (1 - 0.35 * abs(f - 0.5))
-          {bx, by} = {hx + hr * 0.82 * :math.cos(t), hy + hr * 0.82 * :math.sin(t)}
-          {px, py} = {bx + len * :math.cos(t), by + len * :math.sin(t)}
-          {nx, ny} = {-:math.sin(t) * hr * 0.16, :math.cos(t) * hr * 0.16}
-          bend = (f - 0.5) * hr * 0.3
-
-          ~s|<path d="M#{n(bx - nx)} #{n(by - ny)} Q#{n((bx + px) / 2 + bend)} #{n((by + py) / 2)} #{n(px)} #{n(py)} Q#{n((bx + px) / 2 + bend * 0.3)} #{n((by + py) / 2 + 3)} #{n(bx + nx)} #{n(by + ny)}Z"/>|
-        end
-
-      "antlers" ->
-        for side <- [-1, 1] do
-          {bx, by} = {hx + side * hr * 0.55, hy - hr * 0.72}
-          {ex, ey} = {bx + side * hr * 1.25, by - hr * 1.05}
-          {mx, my} = {(bx + ex) / 2 + side * hr * 0.15, (by + ey) / 2 + hr * 0.1}
-
-          tines =
-            for {f, dx, dy} <- [{0.35, -0.05, -0.55}, {0.62, 0.2, -0.5}, {0.85, 0.42, -0.2}] do
-              {px, py} = {bx + (ex - bx) * f, by + (ey - by) * f}
-              "M#{n(px)} #{n(py)} l#{n(side * dx * hr)} #{n(dy * hr)}"
-            end
-
-          ~s|<path d="M#{n(bx)} #{n(by)} Q#{n(mx)} #{n(my)} #{n(ex)} #{n(ey)} #{Enum.join(tines, " ")}" fill="none" stroke="currentColor" stroke-width="#{n(hr * 0.17)}" stroke-linecap="round" stroke-linejoin="round"/>|
-        end
-
-      "frill" ->
-        k = 13
-
-        pts =
-          for i <- 0..(2 * k - 1) do
-            t = :math.pi() * (0.8 + 1.4 * i / (2 * k - 1))
-            rad = if rem(i, 2) == 0, do: hr * (1.75 + 0.15 * rand(s, {:frill, i})), else: hr * 1.2
-            {hx + rad * :math.cos(t), hy + rad * :math.sin(t)}
-          end
-
-        ~s|<path d="#{polygon([{hx, hy + hr * 0.2} | pts])}"/>|
-
-      "halo_eyes" ->
-        ~s|<circle cx="#{n(hx)}" cy="#{n(hy - hr * 0.1)}" r="#{n(hr * 1.5)}" fill="none" stroke="currentColor" stroke-width="#{n(hr * 0.3)}"/>|
-
-      _ ->
-        []
-    end
-  end
-
-  defp hero_front(r, _m) do
-    {hx, hy, hr} = main_head(r)
-    s = r.seed
-
-    case r.hero do
-      "mask" ->
-        ~s|<path d="#{mask_path(hx, hy + hr * 0.02, hr * 0.82, hr * 1.05)}"/>|
-
-      "beard" ->
-        k = 4 + rem(div(s, 3), 3)
-
-        for i <- 0..(k - 1) do
-          f = i / (k - 1) - 0.5
-          {x0, y0} = {hx + f * hr * 1.3, hy + hr * 0.55}
-          len = hr * (1.1 + 0.6 * rand(s, {:beard, i}))
-          curl = (rand(s, {:bc, i}) - 0.5) * hr * 1.2
-
-          ~s|<path d="#{limb({x0, y0}, {x0 + curl, y0 + len * 0.5}, {x0 + f * hr * 0.9 - curl * 0.4, y0 + len}, hr * 0.13, 0.5)}"/>|
-        end
-
-      "maw" ->
-        {mx, my, w, h} = maw_box(r)
-
-        ~s|<path d="M#{n(mx - w - 5)} #{n(my - 3)} Q#{n(mx)} #{n(my - h * 0.45)} #{n(mx + w + 5)} #{n(my - 3)} Q#{n(mx)} #{n(my + h * 1.55)} #{n(mx - w - 5)} #{n(my - 3)}Z"/>|
-
-      "great_eye" ->
-        [{x, y, er} | _] = eye_spots(%{"eyes" => 1}, r)
-        ~s|<ellipse cx="#{n(x)}" cy="#{n(y)}" rx="#{n(er * 1.32)}" ry="#{n(er * 1.12)}"/>|
-
-      _ ->
-        []
-    end
-  end
-
-  defp mask_path(cx, cy, w, h) do
-    "M#{n(cx - w)} #{n(cy - h * 0.55)} Q#{n(cx)} #{n(cy - h * 1.0)} #{n(cx + w)} #{n(cy - h * 0.55)} " <>
-      "L#{n(cx + w * 0.75)} #{n(cy + h * 0.35)} Q#{n(cx)} #{n(cy + h * 1.0)} #{n(cx - w * 0.75)} #{n(cy + h * 0.35)}Z"
-  end
-
-  defp maw_box(r) do
-    {tx, ty, trx, try_} = r.torso
-    {hx, hy, hr} = main_head(r)
-
-    cond do
-      r.hood -> {hx, hy + hr * 1.7, hr * 0.75, hr * 0.4}
-      r.neck == 0 and hy + hr > ty - try_ -> {hx, hy + hr * 0.42, hr * 0.62, hr * 0.42}
-      true -> {tx, ty - try_ * 0.5, trx * 0.55, try_ * 0.3}
-    end
-  end
-
-  # fine detail on the hero
-  defp hero_lines(r) do
-    {hx, hy, hr} = main_head(r)
-
-    case r.hero do
-      "mask" ->
-        cy = hy + hr * 0.02
-
-        [
-          ~s|<path d="M#{n(hx)} #{n(cy - hr * 0.95)} V#{n(cy - hr * 0.6)} M#{n(hx)} #{n(cy + hr * 0.5)} V#{n(cy + hr * 0.95)}" stroke="#{@black}" stroke-width="2.2" fill="none"/>|,
-          for k <- [-1, 1] do
-            ~s|<path d="M#{n(hx + k * hr * 0.25)} #{n(cy + hr * 0.55)} q#{n(k * hr * 0.15)} #{n(hr * 0.1)} #{n(k * hr * 0.3)} 0" stroke="#{@black}" stroke-width="1.2" fill="none"/>|
-          end
-        ]
-
-      "frill" ->
-        for i <- 0..12 do
-          t = :math.pi() * (0.8 + 1.4 * i / 12)
-
-          ~s|<path d="M#{n(hx + hr * 1.05 * :math.cos(t))} #{n(hy + hr * 1.05 * :math.sin(t))} L#{n(hx + hr * 1.62 * :math.cos(t))} #{n(hy + hr * 1.62 * :math.sin(t))}" stroke="#{@paper}" stroke-width="1.2" opacity=".8"/>|
-        end
-
-      "halo_eyes" ->
-        for i <- 0..8,
-            t = :math.pi() * (0.75 + 1.5 * i / 8),
-            {x, y} = {hx + hr * 1.5 * :math.cos(t), hy - hr * 0.1 + hr * 1.5 * :math.sin(t)},
-            y < hy + hr * 0.2 do
-          er = hr * 0.12
-
+  defp mask_d(r) do
+    ops =
+      case r.mask do
+        "skull" ->
           [
-            ~s|<circle cx="#{n(x)}" cy="#{n(y)}" r="#{n(er)}" fill="#{@paper}" stroke="#{@black}" stroke-width="1.3"/>|,
-            ~s|<circle cx="#{n(x)}" cy="#{n(y)}" r="#{n(er * 0.32)}" fill="#{@black}"/>|
+            {:m, -0.5, 1.2},
+            {:l, -0.5, 0.6},
+            {:c, -0.95, 0.5, -1.05, 0.0, -1.0, -0.4},
+            {:c, -0.95, -1.05, -0.45, -1.25, 0.0, -1.25},
+            {:c, 0.45, -1.25, 0.95, -1.05, 1.0, -0.4},
+            {:c, 1.05, 0.0, 0.95, 0.5, 0.5, 0.6},
+            {:l, 0.5, 1.2}
           ]
-        end
 
-      "beard" ->
-        # suckers
-        k = 4 + rem(div(r.seed, 3), 3)
+        "oval" ->
+          ellipse(0.0, 0.0, 0.82, 1.2)
 
-        for i <- 0..(k - 1), step <- [0.75, 1.0, 1.25] do
-          f = i / (k - 1) - 0.5
+        "beak" ->
+          [
+            {:m, 0.0, -1.15},
+            {:c, 0.6, -1.15, 0.95, -0.7, 0.92, -0.1},
+            {:c, 0.9, 0.3, 0.5, 0.45, 0.28, 0.6},
+            {:l, 0.0, 1.95},
+            {:l, -0.28, 0.6},
+            {:c, -0.5, 0.45, -0.9, 0.3, -0.92, -0.1},
+            {:c, -0.95, -0.7, -0.6, -1.15, 0.0, -1.15}
+          ]
 
-          ~s|<circle cx="#{n(hx + f * hr * 1.3 + (rand(r.seed, {:bc, i}) - 0.5) * hr * 0.4 * step)}" cy="#{n(hy + hr * (0.55 + 0.5 * step))}" r="1.3" fill="#{if r.tone == "dark", do: @black, else: @paper}"/>|
-        end
+        "shield" ->
+          [
+            {:m, -0.9, -1.1},
+            {:l, 0.9, -1.1},
+            {:l, 0.9, 0.2},
+            {:c, 0.9, 0.8, 0.4, 1.1, 0.0, 1.35},
+            {:c, -0.4, 1.1, -0.9, 0.8, -0.9, 0.2}
+          ]
 
-      _ ->
-        []
+        "moon" ->
+          ellipse(0.0, 0.0, 1.0, 1.0)
+
+        "slab" ->
+          poly([
+            {-0.6, -1.3},
+            {0.6, -1.3},
+            {0.72, -1.18},
+            {0.72, 1.18},
+            {0.6, 1.3},
+            {-0.6, 1.3},
+            {-0.72, 1.18},
+            {-0.72, -1.18}
+          ])
+
+        "lantern" ->
+          poly([{0.0, -1.35}, {0.9, -0.7}, {0.9, 0.7}, {0.0, 1.35}, {-0.9, 0.7}, {-0.9, -0.7}])
+
+        "visor" ->
+          [
+            {:m, -1.08, -0.62},
+            {:c, -0.4, -0.92, 0.4, -0.92, 1.08, -0.62},
+            {:l, 0.96, 0.3},
+            {:c, 0.4, 0.12, -0.4, 0.12, -0.96, 0.3}
+          ]
+      end
+
+    path(r, ops)
+  end
+
+  defp ellipse(cu, cv, ru, rv) do
+    kk = 0.5523
+
+    [
+      {:m, cu, cv - rv},
+      {:c, cu + kk * ru, cv - rv, cu + ru, cv - kk * rv, cu + ru, cv},
+      {:c, cu + ru, cv + kk * rv, cu + kk * ru, cv + rv, cu, cv + rv},
+      {:c, cu - kk * ru, cv + rv, cu - ru, cv + kk * rv, cu - ru, cv},
+      {:c, cu - ru, cv - kk * rv, cu - kk * ru, cv - rv, cu, cv - rv}
+    ]
+  end
+
+  defp poly([{u0, v0} | rest]), do: [{:m, u0, v0} | for({u, v} <- rest, do: {:l, u, v})]
+
+  defp path(r, ops) do
+    p = fn u, v ->
+      {x, y} = pt(r, u, v)
+      "#{n(x)} #{n(y)}"
+    end
+
+    Enum.map_join(ops, fn
+      {:m, u, v} -> "M" <> p.(u, v)
+      {:l, u, v} -> "L" <> p.(u, v)
+      {:c, u1, v1, u2, v2, u, v} -> "C#{p.(u1, v1)} #{p.(u2, v2)} #{p.(u, v)}"
+    end) <> "Z"
+  end
+
+  defp the_mask(a, m, r, id) do
+    d = mask_d(r)
+    lx = r.light
+    {_, ty} = pt(r, 0, r.meta.top)
+    {sx, sy} = pt(r, -lx * 1.0, 0.15)
+
+    [
+      ~s|<path d="#{d}" fill="#{if r.faded, do: @light, else: @bone}"/>|,
+      if(a["ink"] == "ash",
+        do: ~s|<path d="#{d}" fill="url(##{id}-tone1)" opacity=".5"/>|,
+        else: ""
+      ),
+      ~s|<g clip-path="url(##{id}-face)">|,
+      # the far side in hatching, and the hood's shadow across the brow
+      ~s|<ellipse cx="#{n(sx)}" cy="#{n(sy)}" rx="#{n(r.mw * 0.6)}" ry="#{n(r.mw * 1.6)}" fill="url(##{id}-hatch)"/>|,
+      if(r.mask == "visor",
+        do: "",
+        else:
+          ~s|<ellipse cx="#{n(r.mx)}" cy="#{n(ty - r.mw * 0.25)}" rx="#{n(r.mw * 1.4)}" ry="#{n(r.mw * 0.5)}" fill="url(##{id}-hatch)" opacity=".7"/>|
+      ),
+      marks(a, r, id),
+      if(r.faded or m["register"] == "real", do: cracks(r), else: ""),
+      "</g>",
+      mask_details(r),
+      ~s|<path d="#{d}" fill="none" stroke="#{@black}" stroke-width="#{if m["vigor"] >= 4, do: 2.3, else: 1.8}" stroke-linejoin="round"/>|,
+      mouth(a, m, r),
+      eyes(a, m, r)
+    ]
+  end
+
+  defp mask_details(r) do
+    line = fn {u0, v0}, {u1, v1}, w ->
+      {x0, y0} = pt(r, u0, v0)
+      {x1, y1} = pt(r, u1, v1)
+
+      ~s|<path d="M#{n(x0)} #{n(y0)} L#{n(x1)} #{n(y1)}" stroke="#{@black}" stroke-width="#{w}"/>|
+    end
+
+    case r.mask do
+      "beak" -> [line.({0, 0.15}, {0, 1.85}, 1.0), line.({-0.12, 0.62}, {0.12, 0.62}, 1.0)]
+      "lantern" -> [line.({-0.9, -0.7}, {0.9, -0.7}, 1.0), line.({-0.9, 0.7}, {0.9, 0.7}, 1.0)]
+      "slab" -> line.({0, -1.3}, {0, -0.75}, 0.9)
+      _ -> ""
     end
   end
 
-  # ---------- dark places ----------
-
-  defp hood_interior(%{hood: true} = r) do
-    {hx, hy, hr} = main_head(r)
-
-    ~s|<ellipse cx="#{n(hx)}" cy="#{n(hy)}" rx="#{n(hr * 0.95)}" ry="#{n(hr * 1.1)}" fill="#{@black}"/>|
-  end
-
-  defp hood_interior(_r), do: ""
-
-  defp maw_interior(a, r) do
-    if maw?(a, r) do
-      {mx, my, w, h} = maw_box(r)
-
-      ~s|<path d="M#{n(mx - w)} #{n(my)} Q#{n(mx)} #{n(my - h * 0.25)} #{n(mx + w)} #{n(my)} Q#{n(mx)} #{n(my + h * 1.3)} #{n(mx - w)} #{n(my)}Z" fill="#{@black}"/>|
-    else
-      ""
-    end
-  end
-
-  defp teeth(a, r) do
-    if maw?(a, r) do
-      {mx, my, w, h} = maw_box(r)
-      k = 7
-
-      top =
-        for i <- 0..(k - 1) do
-          x = mx - w * 0.85 + i * 1.7 * w / (k - 1)
-          y = my - h * 0.1 + abs(i - (k - 1) / 2) * 0.6
-
-          ~s|<path d="M#{n(x - w * 0.1)} #{n(y)} L#{n(x)} #{n(y + h * 0.42)} L#{n(x + w * 0.1)} #{n(y)}Z" fill="#{@paper}"/>|
-        end
-
-      bottom =
-        for i <- 0..(k - 2) do
-          x = mx - w * 0.6 + i * 1.2 * w / (k - 2)
-          y = my + h * 0.95
-
-          ~s|<path d="M#{n(x - w * 0.08)} #{n(y)} L#{n(x)} #{n(y - h * 0.35)} L#{n(x + w * 0.08)} #{n(y)}Z" fill="#{@paper}"/>|
-        end
-
-      [top, bottom]
-    else
-      []
-    end
-  end
-
-  # ---------- eyes ----------
-
-  # {x, y, r} for every eye, spread over the heads; the great eye comes first
+  # where the eye holes are, as {x, y, radius}
   defp eye_spots(a, r) do
-    total = a["eyes"] || 1
-    count = length(r.heads)
-    per = for i <- 0..(count - 1), do: max(1, div(total + count - 1 - i, count))
+    count = a["eyes"] || 2
+    ev = r.meta.eyes
 
-    r.heads
-    |> Enum.zip(per)
-    |> Enum.with_index()
-    |> Enum.flat_map(fn {{{hx, hy, hr}, k}, i} ->
-      great = i == 0 and r.hero == "great_eye"
-      big = if r.hood, do: 1.35, else: 1.0
+    spots =
+      if r.mask == "visor" do
+        rr = min(0.24, 1.0 / count)
 
-      jitter = fn e ->
-        if r.symmetric, do: 0.0, else: (rand(r.seed, {:eye, i, e}) - 0.5) * hr * 0.08
+        for i <- 0..(count - 1),
+            do: {if(count == 1, do: 0.0, else: -0.72 + 1.44 * i / (count - 1)), 0.0, rr}
+      else
+        layout(count)
       end
 
-      k
-      |> layout(great)
-      |> Enum.with_index()
-      |> Enum.map(fn {{dx, dy, er}, e} ->
-        {hx + dx * hr + jitter.(e), hy + dy * hr + jitter.(e + 9), er * hr * big}
-      end)
-    end)
-  end
-
-  # in head radii
-  defp layout(1, false), do: [{0.0, -0.08, 0.32}]
-  defp layout(1, true), do: [{0.0, -0.04, 0.5}]
-
-  defp layout(count, true) do
-    mid = (count - 2) / 2
-    small = for k <- 0..(count - 2), do: {(k - mid) * 0.32, -0.74 + abs(k - mid) * 0.12, 0.12}
-    [{0.0, 0.02, 0.46} | small]
-  end
-
-  defp layout(count, false) do
-    centre = if rem(count, 2) == 1, do: [{0.0, -0.1, 0.27}], else: []
-
-    pairs =
-      [{0.42, -0.3, 0.21}, {0.38, 0.2, 0.16}, {0.74, -0.04, 0.12}] |> Enum.take(div(count, 2))
-
-    pairs =
-      if centre == [] and pairs != [],
-        do: List.replace_at(pairs, 0, {0.34, -0.14, 0.25}),
-        else: pairs
-
-    centre ++ Enum.flat_map(pairs, fn {dx, dy, er} -> [{-dx, dy, er}, {dx, dy, er}] end)
-  end
-
-  defp openness(m), do: if(m["lack"] >= 3, do: 0.95, else: 0.78)
-  defp gaze(r), do: -0.22 * r.light
-
-  defp eye_whites(_eyes, %{"faded" => true}), do: []
-
-  defp eye_whites(eyes, m) do
-    o = openness(m)
-
-    for {x, y, er} <- eyes,
-        do:
-          ~s|<ellipse cx="#{n(x)}" cy="#{n(y)}" rx="#{n(er)}" ry="#{n(er * o)}" fill="#{@paper}"/>|
-  end
-
-  defp irises(_eyes, %{"faded" => true}, _g), do: []
-
-  defp irises(eyes, m, g) do
-    o = openness(m)
-
-    for {x, y, er} <- eyes do
-      ri = er * min(0.62, o - 0.12)
-
-      [
-        ~s|<circle cx="#{n(x + g * er)}" cy="#{n(y)}" r="#{n(ri)}" fill="#{@mid}"/>|,
-        # a ring of fine lines, as an inked iris
-        ~s|<circle cx="#{n(x + g * er)}" cy="#{n(y)}" r="#{n(ri * 0.75)}" fill="none" stroke="#{@black}" stroke-width="#{n(max(0.5, ri * 0.5))}" stroke-dasharray="0.6 1.1" opacity=".8"/>|
-      ]
+    for {u, dv, rr} <- spots do
+      {x, y} = pt(r, u, ev + dv)
+      {x, y, rr * r.mw}
     end
   end
 
-  defp pupils(eyes, %{"faded" => true}, _g, line) do
-    for {x, y, er} <- eyes do
-      ~s|<path d="M#{n(x - er)} #{n(y)} Q#{n(x)} #{n(y + er * 0.6)} #{n(x + er)} #{n(y)}" fill="none" stroke="#{line}" stroke-width="2.2" stroke-linecap="round"/>|
-    end
-  end
+  defp layout(1), do: [{0.0, 0.0, 0.3}]
+  defp layout(2), do: [{-0.42, 0.0, 0.24}, {0.42, 0.0, 0.24}]
+  defp layout(3), do: [{-0.42, 0.0, 0.21}, {0.42, 0.0, 0.21}, {0.0, -0.55, 0.16}]
 
-  defp pupils(eyes, m, g, _line) do
-    o = openness(m)
-    # horror: high lack shrinks the pupil to a pinpoint
-    size = if m["lack"] >= 3, do: 0.1, else: 0.24
+  defp layout(4),
+    do: [{-0.42, 0.0, 0.19}, {0.42, 0.0, 0.19}, {-0.2, -0.55, 0.14}, {0.2, -0.55, 0.14}]
 
-    for {x, y, er} <- eyes do
-      px = x + g * er
+  defp layout(count) do
+    upper = count - 3
 
-      [
-        ~s|<ellipse cx="#{n(x)}" cy="#{n(y)}" rx="#{n(er)}" ry="#{n(er * o)}" fill="none" stroke="#{@black}" stroke-width="#{n(max(1.5, er * 0.14))}"/>|,
-        ~s|<circle cx="#{n(px)}" cy="#{n(y)}" r="#{n(max(1.0, er * size))}" fill="#{@black}"/>|,
-        ~s|<circle cx="#{n(px - er * 0.24)}" cy="#{n(y - er * 0.26)}" r="#{n(max(0.9, er * 0.12))}" fill="#{@paper}"/>|
-      ]
-    end
-  end
-
-  # heavy lids when it is starving or withdrawn
-  defp lids(eyes, m, r) do
-    if not m["faded"] and (m["vigor"] <= 1 or m["sociability"] == 0) do
-      o = openness(m)
-      fill = if r.tone == "dark", do: @darkest, else: @light
-
-      for {x, y, er} <- eyes do
-        ~s|<path d="M#{n(x - er)} #{n(y)} A#{n(er)} #{n(er * o)} 0 0 1 #{n(x + er)} #{n(y)} Q#{n(x)} #{n(y - er * 0.05)} #{n(x - er)} #{n(y)}Z" fill="#{fill}" stroke="#{@black}" stroke-width="1.4"/>|
+    [{-0.5, 0.0, 0.15}, {0.0, 0.0, 0.15}, {0.5, 0.0, 0.15}] ++
+      for i <- 0..(upper - 1) do
+        {if(upper == 1, do: 0.0, else: -0.45 + 0.9 * i / (upper - 1)), -0.5, 0.11}
       end
-    else
-      []
-    end
   end
 
-  defp brows(eyes, m, {hx, _hy, hr}, colour) do
-    kind =
-      cond do
-        m["faded"] -> nil
-        m["unknotted"] or m["register"] == "real" -> :angry
-        m["mourning"] or m["vigor"] <= 1 -> :sad
-        m["lack"] >= 3 -> :wide
-        true -> nil
-      end
+  defp eyes(a, m, r) do
+    spots = eye_spots(a, r)
+    shape = a["eye_shape"] || "round"
+    wide = (m["lack"] || 0) >= 3
+    gaze = -0.18 * r.light
 
-    for {x, y, er} <- eyes, kind != nil, er >= hr * 0.15 do
-      top = y - er * 1.3
+    for {{x, y, rr}, i} <- Enum.with_index(spots) do
+      hole =
+        case shape do
+          "hollow" ->
+            ~s|<ellipse cx="#{n(x)}" cy="#{n(y)}" rx="#{n(rr * 1.15)}" ry="#{n(rr * 1.3)}" fill="#{@black}"/>|
 
-      tilt =
-        case kind do
-          :angry -> er * 0.32
-          :sad -> -er * 0.32
-          :wide -> 0.0
+          "slit" ->
+            ~s|<ellipse cx="#{n(x)}" cy="#{n(y)}" rx="#{n(rr * 1.25)}" ry="#{n(rr * 0.45)}" fill="#{@black}"/>|
+
+          "almond" ->
+            ~s|<path d="M#{n(x - rr * 1.25)} #{n(y)} Q#{n(x)} #{n(y - rr * 0.95)} #{n(x + rr * 1.25)} #{n(y)} Q#{n(x)} #{n(y + rr * 0.95)} #{n(x - rr * 1.25)} #{n(y)}Z" fill="#{@black}"/>|
+
+          "ring" ->
+            [
+              ~s|<circle cx="#{n(x)}" cy="#{n(y)}" r="#{n(rr)}" fill="#{@black}"/>|,
+              if(r.faded,
+                do: "",
+                else: ~s|<circle cx="#{n(x)}" cy="#{n(y)}" r="#{n(rr * 0.62)}" fill="#{@bone}"/>|
+              )
+            ]
+
+          _ ->
+            ~s|<circle cx="#{n(x)}" cy="#{n(y)}" r="#{n(rr)}" fill="#{@black}"/>|
         end
 
-      {ly, ry} =
+      pupil =
         cond do
-          x < hx - 1 -> {top - tilt / 2, top + tilt / 2}
-          x > hx + 1 -> {top + tilt / 2, top - tilt / 2}
-          true -> {top, top}
+          r.faded ->
+            ""
+
+          shape == "ring" ->
+            ~s|<circle cx="#{n(x + gaze * rr)}" cy="#{n(y)}" r="#{n(rr * if(wide, do: 0.45, else: 0.28))}" fill="#{@black}"/>|
+
+          true ->
+            pr = rr * if(wide, do: 0.42, else: 0.26)
+            pr = if shape == "slit", do: min(pr, rr * 0.34), else: pr
+
+            ~s|<circle cx="#{n(x + gaze * rr)}" cy="#{n(y)}" r="#{n(pr)}" fill="#{@bone}"/>|
         end
 
-      bend = if kind == :wide, do: -er * 0.4, else: 0
+      # full of ichor, the eyes blaze
+      rays =
+        if m["vigor"] >= 4 and not r.faded do
+          for k <- 0..5 do
+            t = :math.pi() * (k / 3 + 1 / 6)
+            {c, s} = {:math.cos(t), :math.sin(t)}
 
-      ~s|<path d="M#{n(x - er * 0.9)} #{n(ly)} Q#{n(x)} #{n((ly + ry) / 2 + bend)} #{n(x + er * 0.9)} #{n(ry)}" fill="none" stroke="#{colour}" stroke-width="#{n(max(2.0, er * 0.22))}" stroke-linecap="round"/>|
+            ~s|<path d="M#{n(x + c * rr * 1.6)} #{n(y + s * rr * 1.6)} L#{n(x + c * rr * 2.2)} #{n(y + s * rr * 2.2)}" stroke="#{@black}" stroke-width="1.1" stroke-linecap="round"/>|
+          end
+        else
+          []
+        end
+
+      tear =
+        if i == 0 and m["mourning"] and not r.faded do
+          ~s|<path d="M#{n(x)} #{n(y + rr * 1.4)} q-#{n(rr * 0.5)} #{n(rr * 1.1)} 0 #{n(rr * 1.4)} q#{n(rr * 0.5)} -#{n(rr * 0.3)} 0 -#{n(rr * 1.4)}Z" fill="#{@paper}" stroke="#{@black}" stroke-width="1.1"/>|
+        else
+          ""
+        end
+
+      [hole, pupil, rays, tear]
     end
   end
 
   defp mouth(a, m, r) do
-    {hx, hy, hr} = main_head(r)
-    y = hy + hr * 0.5
-    ink = if r.tone == "dark", do: @paper, else: @black
+    case r.meta.mouth do
+      nil ->
+        ""
 
-    cond do
-      maw?(a, r) or r.hood or r.hero in ["beard", "mask"] ->
-        []
+      {mv, mhw} ->
+        {x, y} = pt(r, 0, mv)
+        w = mhw * r.mw
+        h = r.mw
 
-      m["faded"] ->
-        ~s|<path d="M#{n(hx - hr * 0.2)} #{n(y)} h#{n(hr * 0.4)}" stroke="#{ink}" stroke-width="2" stroke-linecap="round"/>|
+        case a["mouth"] do
+          "stitches" ->
+            [
+              ~s|<path d="M#{n(x - w)} #{n(y)} H#{n(x + w)}" stroke="#{@black}" stroke-width="1.6" stroke-linecap="round"/>|,
+              for k <- 0..4 do
+                sx = x - w * 0.8 + w * 0.4 * k
 
-      m["vigor"] <= 1 ->
-        ~s|<ellipse cx="#{n(hx)}" cy="#{n(y + hr * 0.02)}" rx="#{n(hr * 0.13)}" ry="#{n(hr * 0.18)}" fill="#{@black}" stroke="#{ink}" stroke-width="1"/>|
+                ~s|<path d="M#{n(sx)} #{n(y - h * 0.12)} V#{n(y + h * 0.12)}" stroke="#{@black}" stroke-width="1.3"/>|
+              end
+            ]
 
-      m["whispering"] ->
-        ~s|<circle cx="#{n(hx)}" cy="#{n(y)}" r="#{n(hr * 0.08)}" fill="#{@black}" stroke="#{ink}" stroke-width="1"/>|
+          "grille" ->
+            [
+              ~s|<rect x="#{n(x - w)}" y="#{n(y - h * 0.16)}" width="#{n(w * 2)}" height="#{n(h * 0.32)}" fill="#{@black}"/>|,
+              for k <- 1..4 do
+                ~s|<path d="M#{n(x - w + w * 0.4 * k)} #{n(y - h * 0.16)} v#{n(h * 0.32)}" stroke="#{@bone}" stroke-width="1"/>|
+              end
+            ]
 
-      m["unknotted"] or m["register"] == "real" ->
-        w = hr * 0.32
+          "slit" ->
+            ~s|<path d="M#{n(x - w)} #{n(y)} H#{n(x + w)}" stroke="#{@black}" stroke-width="2.4" stroke-linecap="round"/>|
 
-        pts =
-          for i <- 0..6,
-              do: "#{n(hx - w + i * w / 3)} #{n(y + if(rem(i, 2) == 0, do: 0, else: hr * 0.07))}"
+          "teeth" ->
+            [
+              ~s|<rect x="#{n(x - w)}" y="#{n(y - h * 0.15)}" width="#{n(w * 2)}" height="#{n(h * 0.3)}" fill="#{@black}"/>|,
+              for k <- 0..4 do
+                ~s|<rect x="#{n(x - w + w * 0.4 * k + 0.7)}" y="#{n(y - h * 0.15 + 0.7)}" width="#{n(w * 0.4 - 1.4)}" height="#{n(h * 0.3 - 1.4)}" fill="#{@bone}"/>|
+              end
+            ]
 
-        ~s|<polyline points="#{Enum.join(pts, " ")}" fill="none" stroke="#{ink}" stroke-width="2" stroke-linejoin="round"/>|
+          "smile" ->
+            depth = if r.faded or m["vigor"] <= 1, do: 0.02, else: 0.3
 
-      m["mourning"] ->
-        ~s|<path d="M#{n(hx - hr * 0.22)} #{n(y + hr * 0.08)} Q#{n(hx)} #{n(y - hr * 0.08)} #{n(hx + hr * 0.22)} #{n(y + hr * 0.08)}" fill="none" stroke="#{ink}" stroke-width="2.2" stroke-linecap="round"/>|
+            ~s|<path d="M#{n(x - w)} #{n(y - h * 0.08)} Q#{n(x)} #{n(y + h * depth)} #{n(x + w)} #{n(y - h * 0.08)}" fill="none" stroke="#{@black}" stroke-width="1.8" stroke-linecap="round"/>|
 
-      m["vigor"] >= 3 ->
-        ~s|<path d="M#{n(hx - hr * 0.24)} #{n(y - hr * 0.04)} Q#{n(hx)} #{n(y + hr * 0.14)} #{n(hx + hr * 0.24)} #{n(y - hr * 0.04)}" fill="none" stroke="#{ink}" stroke-width="2.2" stroke-linecap="round"/>|
-
-      true ->
-        ~s|<path d="M#{n(hx - hr * 0.2)} #{n(y)} q#{n(hr * 0.1)} #{n(hr * 0.06)} #{n(hr * 0.2)} 0 t#{n(hr * 0.2)} 0" fill="none" stroke="#{ink}" stroke-width="2" stroke-linecap="round"/>|
+          _ ->
+            ""
+        end
     end
   end
 
-  # ---------- texture and mood ----------
+  defp marks(a, r, id) do
+    mw = r.mw
+    {_, top} = pt(r, 0, r.meta.top)
+    {_, ey} = pt(r, 0, r.meta.eyes)
+    few = (a["eyes"] || 2) <= 2
 
-  defp markings(a, r) do
-    {tx, ty, trx, try_} = r.torso
-    s = r.seed
-    ink = if r.tone == "dark", do: @paper, else: @black
+    case a["mark"] do
+      "stripe" ->
+        ~s|<rect x="#{n(r.mx - mw * 0.12)}" y="#{n(r.my - mw * 2)}" width="#{n(mw * 0.24)}" height="#{n(mw * 4)}" fill="#{@black}"/>|
 
-    spot = fn k ->
-      {tx - trx * 0.7 + trx * 1.4 * rand(s, {k, :x}),
-       ty - try_ * 0.75 + try_ * 0.6 * rand(s, {k, :y})}
+      "tears" ->
+        for {x, y, rr} <- eye_spots(a, r) do
+          [
+            ~s|<path d="M#{n(x)} #{n(y + rr)} V#{n(y + rr + mw * 0.7)}" stroke="#{@black}" stroke-width="1.3"/>|,
+            ~s|<circle cx="#{n(x)}" cy="#{n(y + rr + mw * 0.75)}" r="1.6" fill="#{@black}"/>|
+          ]
+        end
+
+      "runes" ->
+        spots =
+          if few,
+            do: for(k <- -1..1, do: {r.mx + k * mw * 0.35, top + mw * 0.42}),
+            else: for(k <- 0..2, do: {r.mx + r.light * mw * 0.62, ey + mw * (0.38 + 0.3 * k)})
+
+        for {{x, y}, i} <- Enum.with_index(spots) do
+          s = mw * 0.09
+
+          glyph =
+            Enum.at(
+              [
+                "M#{n(x)} #{n(y - s)} V#{n(y + s)} M#{n(x - s)} #{n(y - s)} L#{n(x)} #{n(y)}",
+                "M#{n(x - s)} #{n(y + s)} L#{n(x)} #{n(y - s)} L#{n(x + s)} #{n(y + s)}",
+                "M#{n(x - s)} #{n(y - s)} H#{n(x + s)} M#{n(x)} #{n(y - s)} V#{n(y + s)}",
+                "M#{n(x + s)} #{n(y - s)} L#{n(x - s)} #{n(y)} L#{n(x + s)} #{n(y + s)}"
+              ],
+              rem(:erlang.phash2({r.seed, :rune, i}), 4)
+            )
+
+          ~s|<path d="#{glyph}" fill="none" stroke="#{@black}" stroke-width="1.1" stroke-linecap="round"/>|
+        end
+
+      "split" ->
+        side = if rand(r.seed, :split) > 0.5, do: 1, else: -1
+
+        ~s|<rect x="#{n(if side > 0, do: r.mx, else: r.mx - mw * 1.3)}" y="#{n(r.my - mw * 2)}" width="#{n(mw * 1.3)}" height="#{n(mw * 4)}" fill="url(##{id}-tone2)"/>|
+
+      "dots" ->
+        cheeks =
+          for side <- [-1, 1],
+              do:
+                ~s|<circle cx="#{n(r.mx + side * mw * 0.6)}" cy="#{n(ey + mw * 0.5)}" r="#{n(mw * 0.07)}" fill="#{@black}"/>|
+
+        brow =
+          if few,
+            do:
+              ~s|<circle cx="#{n(r.mx)}" cy="#{n(top + mw * 0.4)}" r="#{n(mw * 0.08)}" fill="#{@black}"/>|,
+            else: ""
+
+        [cheeks, brow]
+
+      _ ->
+        ""
     end
-
-    marks =
-      case a["markings"] do
-        "rings" ->
-          for i <- 1..2 do
-            {x, y} = spot.({:ring, i})
-
-            for k <- 1..2,
-                do:
-                  ~s|<circle cx="#{n(x)}" cy="#{n(y)}" r="#{4 * k + 2}" fill="none" stroke="#{ink}" stroke-width="1.3"/>|
-          end
-
-        "dots" ->
-          for i <- 1..12 do
-            {x, y} = spot.({:dot, i})
-
-            ~s|<circle cx="#{n(x)}" cy="#{n(y)}" r="#{n(1.2 + 1.8 * rand(s, {:dot_r, i}))}" fill="#{ink}"/>|
-          end
-
-        "runes" ->
-          for i <- 1..5 do
-            {x, y} = spot.({:rune, i})
-            pts = for k <- 0..2, do: "#{n(x + 8 * rand(s, {:rx, i, k}) - 4)} #{n(y + 4 * k)}"
-
-            ~s|<polyline points="#{Enum.join(pts, " ")}" fill="none" stroke="#{ink}" stroke-width="1.4" stroke-linecap="round"/>|
-          end
-
-        _veins ->
-          for i <- 1..3 do
-            x0 = tx - trx * 0.5 + trx * rand(s, {:vein, i})
-
-            ~s|<path d="M#{n(x0)} #{n(ty)} Q#{n(x0 + 24 * rand(s, {:vq, i}) - 12)} #{n(ty - try_ * 0.4)} #{n(x0 + 18 * rand(s, {:ve, i}) - 9)} #{n(ty - try_ * 0.75)}" fill="none" stroke="#{ink}" stroke-width="1.6" stroke-linecap="round"/>|
-          end
-      end
-
-    [~s|<g opacity=".4">|, marks, "</g>"]
   end
 
   defp cracks(r) do
-    {hx, hy, hr} = main_head(r)
+    {_, top} = pt(r, 0, r.meta.top)
 
-    for i <- 1..3 do
-      x = hx - hr * 0.5 + hr * rand(r.seed, {:crack, i})
-      y = hy - hr
+    for i <- 1..2 do
+      x = r.mx - r.mw * 0.6 + r.mw * 1.2 * rand(r.seed, {:crack, i})
+      y = top - 1
+      s = r.mw / 20
 
-      ~s|<polyline points="#{n(x)} #{n(y)} #{n(x + 7)} #{n(y + 18)} #{n(x - 3)} #{n(y + 32)} #{n(x + 5)} #{n(y + 48)}" fill="none" stroke="#{@black}" stroke-width="1.5"/>|
+      ~s|<polyline points="#{n(x)} #{n(y)} #{n(x + 6 * s)} #{n(y + 12 * s)} #{n(x - 2 * s)} #{n(y + 22 * s)} #{n(x + 4 * s)} #{n(y + 34 * s)}" fill="none" stroke="#{@black}" stroke-width="1.3"/>|
     end
   end
 
+  # ---------- what crowns it ----------
+
+  defp crest_ink(r), do: ~s|fill="#{if r.faded, do: @light, else: @bone}" stroke="#{@black}"|
+
+  # horns, antlers and spikes grow from behind the mask
+  defp crest_behind(%{crest: "horns"} = r) do
+    t = r.meta.top
+
+    for side <- [-1, 1] do
+      d =
+        limb(
+          pt(r, side * 0.5, t + 0.4),
+          pt(r, side * 1.7, t - 0.1),
+          pt(r, side * 1.45, t - 1.6),
+          r.mw * 0.27,
+          r.mw * 0.03
+        )
+
+      ~s|<path d="#{d}" #{crest_ink(r)} stroke-width="1.4" stroke-linejoin="round"/>|
+    end
+  end
+
+  defp crest_behind(%{crest: "antlers"} = r) do
+    t = r.meta.top
+    q = fn u, v -> pt(r, u, v) |> then(fn {x, y} -> "#{n(x)} #{n(y)}" end) end
+
+    d =
+      for side <- [-1, 1] do
+        "M#{q.(side * 0.45, t + 0.3)} Q#{q.(side * 1.4, t - 0.2)} #{q.(side * 1.5, t - 1.7)}" <>
+          " M#{q.(side * 1.05, t - 0.3)} L#{q.(side * 0.8, t - 1.15)}" <>
+          " M#{q.(side * 1.42, t - 0.95)} L#{q.(side * 2.0, t - 1.35)}"
+      end
+      |> Enum.join(" ")
+
+    [
+      ~s|<path d="#{d}" fill="none" stroke="#{@black}" stroke-width="5.6" stroke-linecap="round"/>|,
+      ~s|<path d="#{d}" fill="none" stroke="#{if r.faded, do: @light, else: @bone}" stroke-width="3" stroke-linecap="round"/>|
+    ]
+  end
+
+  defp crest_behind(%{crest: "spikes"} = r) do
+    hh = -r.meta.top
+
+    for i <- 0..8 do
+      t = :math.pi() * (1.1 + 0.8 * i / 8)
+      w = 0.12
+      base = fn dt -> pt(r, :math.cos(t + dt) * 0.95, :math.sin(t + dt) * hh * 0.95) end
+      {x0, y0} = base.(-w)
+      {x1, y1} = base.(w)
+      {x2, y2} = pt(r, :math.cos(t) * 1.7, :math.sin(t) * (hh + 0.7))
+
+      ~s|<path d="M#{n(x0)} #{n(y0)} L#{n(x2)} #{n(y2)} L#{n(x1)} #{n(y1)}Z" #{crest_ink(r)} stroke-width="1.2" stroke-linejoin="round"/>|
+    end
+  end
+
+  defp crest_behind(_r), do: ""
+
+  # a crown sits on the mask's brow
+  defp crest_front(%{crest: "crown"} = r) do
+    t = r.meta.top
+    b = t + 0.2
+
+    pts =
+      for i <- 0..10 do
+        u = -0.8 + 1.6 * i / 10
+
+        if rem(i, 2) == 0,
+          do: pt(r, u, b),
+          else: pt(r, u, t - if(i == 5, do: 0.8, else: 0.55))
+      end
+
+    {x0, y0} = pt(r, 0.8, b + 0.22)
+    {x1, y1} = pt(r, -0.8, b + 0.22)
+
+    points =
+      (pts ++ [{x0, y0}, {x1, y1}]) |> Enum.map_join(" ", fn {x, y} -> "#{n(x)},#{n(y)}" end)
+
+    ~s|<polygon points="#{points}" #{crest_ink(r)} stroke-width="1.4" stroke-linejoin="round"/>|
+  end
+
+  defp crest_front(_r), do: ""
+
+  # a halo stands behind the whole figure
+  defp halo(%{crest: "halo"} = r, line) do
+    {hx, hy, hw} = head(r)
+
+    [
+      ~s|<circle cx="#{n(hx)}" cy="#{n(hy - 6)}" r="#{n(hw * 1.38)}" fill="none" stroke="#{line}" stroke-width="2.4"/>|,
+      ~s|<circle cx="#{n(hx)}" cy="#{n(hy - 6)}" r="#{n(hw * 1.24)}" fill="none" stroke="#{line}" stroke-width="3" stroke-dasharray="1.5 4"/>|
+    ]
+  end
+
+  defp halo(_r, _line), do: ""
+
+  # ---------- temperament ----------
+
+  # a wanderer leans on a staff
+  defp staff(%{"wanderlust" => 2}, r, line) do
+    x = r.hx - r.light * (r.sw - 4)
+    y = r.top + 10
+
+    [
+      ~s|<path d="M#{n(x)} 240 V#{n(y)} q0 -12 #{n(r.light * 10)} -12 q#{n(r.light * 9)} 0 #{n(r.light * 9)} 10" fill="none" stroke="#{line}" stroke-width="5.4" stroke-linecap="round"/>|,
+      ~s|<path d="M#{n(x)} 240 V#{n(y)} q0 -12 #{n(r.light * 10)} -12 q#{n(r.light * 9)} 0 #{n(r.light * 9)} 10" fill="none" stroke="#{@mid}" stroke-width="2.4" stroke-linecap="round"/>|
+    ]
+  end
+
+  defp staff(_m, _r, _line), do: ""
+
+  # a generous one holds out an open hand
+  defp hand(%{"generosity" => 2}, %{faded: false} = r) do
+    {px, py} = {r.hx + r.light * r.sw * 0.42, 192}
+
+    fingers =
+      for k <- 0..3 do
+        t = -:math.pi() / 2 + (k - 1.5) * 0.32
+        {fx, fy} = {px + :math.cos(t) * 13, py + :math.sin(t) * 13}
+        "M#{n(px + :math.cos(t) * 4)} #{n(py + :math.sin(t) * 4)} L#{n(fx)} #{n(fy)}"
+      end
+      |> Enum.join(" ")
+
+    thumb = "M#{n(px + r.light * 5)} #{n(py)} L#{n(px + r.light * 13)} #{n(py - 5)}"
+
+    [
+      ~s|<ellipse cx="#{n(px)}" cy="#{n(py + 9)}" rx="13" ry="6" fill="#{@black}"/>|,
+      ~s|<path d="#{fingers} #{thumb}" fill="none" stroke="#{@black}" stroke-width="5.4" stroke-linecap="round"/>|,
+      ~s|<ellipse cx="#{n(px)}" cy="#{n(py + 1)}" rx="8.6" ry="6.6" fill="#{@bone}" stroke="#{@black}" stroke-width="1.4"/>|,
+      ~s|<path d="#{fingers} #{thumb}" fill="none" stroke="#{@bone}" stroke-width="2.8" stroke-linecap="round"/>|
+    ]
+  end
+
+  defp hand(_m, _r), do: ""
+
+  # ---------- mood signs ----------
+
   # the Symbolic as a ring of runes about the head; a loosened knot breaks it
   defp ring(m, r, line) do
-    {hx, hy, hr} = main_head(r)
+    {hx, hy, hw} = head(r)
 
     cond do
       m["unknotted"] ->
-        ~s|<circle cx="#{n(hx)}" cy="#{n(hy)}" r="#{n(hr * 1.42)}" fill="none" stroke="#{line}" stroke-width="2.4" stroke-dasharray="38 12 5 20"/>|
+        ~s|<circle cx="#{n(hx)}" cy="#{n(hy)}" r="#{n(hw * 1.5)}" fill="none" stroke="#{line}" stroke-width="2.4" stroke-dasharray="38 12 5 20"/>|
 
       m["register"] == "symbolic" ->
-        ~s|<circle cx="#{n(hx)}" cy="#{n(hy)}" r="#{n(hr * 1.42)}" fill="none" stroke="#{line}" stroke-width="4" stroke-dasharray="1.5 5"/>|
+        ~s|<circle cx="#{n(hx)}" cy="#{n(hy)}" r="#{n(hw * 1.5)}" fill="none" stroke="#{line}" stroke-width="4" stroke-dasharray="1.5 5"/>|
 
       true ->
         ""
@@ -1074,15 +966,14 @@ defmodule Lofi.Portrait.Svg do
   # the Imaginary: a double, slightly shifted
   defp ghost(m, id, line) do
     if m["register"] == "imaginary" and not m["faded"] do
-      ~s|<use href="##{id}-shape" xlink:href="##{id}-shape" fill="none" stroke="#{line}" color="#{line}" stroke-width="1.2" stroke-dasharray="3 2" transform="translate(7 -6)" opacity=".7"/>|
+      ~s|<use href="##{id}-shape" xlink:href="##{id}-shape" fill="none" stroke="#{line}" color="#{line}" stroke-width="1.2" stroke-dasharray="3 2" transform="translate(9 -7)" opacity=".7"/>|
     else
       ""
     end
   end
 
-  defp signs(m, r) do
+  defp signs(m, r, line) do
     {ax, ay, aw, ah} = @art
-    {hx, hy, hr} = main_head(r)
 
     [
       # what it longs for, as a little label
@@ -1095,19 +986,14 @@ defmodule Lofi.Portrait.Svg do
           ~s|<path d="M#{ax + aw - 16} #{ay + 6} l6 8 -6 8 -6 -8Z" fill="#{@black}" stroke="#{@paper}" stroke-width="1.4"/>|,
         else: ""
       ),
-      if(m["mourning"] and not m["faded"],
-        do:
-          ~s|<path d="M#{n(hx - hr * 0.42)} #{n(hy - hr * 0.02)} q-#{n(hr * 0.1)} #{n(hr * 0.22)} 0 #{n(hr * 0.28)} q#{n(hr * 0.1)} -#{n(hr * 0.06)} 0 -#{n(hr * 0.28)}Z" fill="#{@paper}" stroke="#{@black}" stroke-width="1.2"/>|,
-        else: ""
-      ),
       if(m["whispering"] and not m["faded"],
         do:
           for k <- 1..3 do
-            x = hx + r.light * (hr + 4 + 6 * k)
+            x = r.hx + r.light * (r.hw + 4 + 6 * k)
+            y = r.my + r.mw * 0.4
             sweep = if r.light > 0, do: 1, else: 0
-            colour = if r.ground == "void", do: @paper, else: @black
 
-            ~s|<path d="M#{n(x)} #{n(hy - hr * 0.3 - 7 * k)} a#{6 * k} #{6 * k} 0 0 #{sweep} 0 #{12 * k}" fill="none" stroke="#{colour}" stroke-width="2.2" stroke-linecap="round" opacity="#{n(1 - k * 0.2)}"/>|
+            ~s|<path d="M#{n(x)} #{n(y - 6 * k)} a#{6 * k} #{6 * k} 0 0 #{sweep} 0 #{12 * k}" fill="none" stroke="#{line}" stroke-width="2.2" stroke-linecap="round" opacity="#{n(1 - k * 0.2)}"/>|
           end,
         else: ""
       )
@@ -1150,38 +1036,7 @@ defmodule Lofi.Portrait.Svg do
 
   # ---------- geometry ----------
 
-  defp blob(r, salt, cx, cy, rx, ry, opts) do
-    n_pts = if r.jagged, do: 30, else: 18
-    taper = Keyword.get(opts, :taper, 0.0)
-    flare = Keyword.get(opts, :flare, 0.0)
-    calm = if r.smooth, do: 0.5, else: 1.0
-
-    points =
-      for i <- 0..(n_pts - 1) do
-        t = 2 * :math.pi() * i / n_pts
-        psi = t + :math.pi() / 2
-
-        wobble =
-          for k <- 2..4, reduce: 1.0 do
-            acc ->
-              amp = (0.025 + 0.05 * rand(r.seed, {salt, :amp, k})) * calm
-
-              phase =
-                if r.symmetric, do: 0.0, else: 2 * :math.pi() * rand(r.seed, {salt, :phase, k})
-
-              acc + amp * :math.cos(k * psi + phase)
-          end
-
-        spike = if r.jagged, do: if(rem(i, 2) == 0, do: 1.08, else: 0.92), else: 1.0
-        s = :math.sin(t)
-        x_scale = 1 - taper * max(0.0, -s) + flare * max(0.0, s)
-        {cx + rx * :math.cos(t) * wobble * spike * x_scale, cy + ry * s * wobble * spike}
-      end
-
-    if r.jagged, do: polygon(points), else: smooth(points)
-  end
-
-  # points along a limb's curve with its half-width as a normal vector
+  # points along a curve with its half-width as a normal vector
   defp spine({x0, y0}, {qx, qy}, {x1, y1}, w0, w1, steps) do
     for k <- 0..steps do
       t = k / steps
@@ -1208,25 +1063,6 @@ defmodule Lofi.Portrait.Svg do
   @doc false
   # a stable number in [0, 1) for a seed and a label
   def rand(seed, label), do: :erlang.phash2({seed, label}, 1_000_000) / 1_000_000
-
-  defp smooth(points) do
-    pts = List.to_tuple(points)
-    count = tuple_size(pts)
-    at = fn i -> elem(pts, rem(i + count, count)) end
-    {x0, y0} = at.(0)
-
-    segments =
-      for i <- 0..(count - 1) do
-        {ax, ay} = at.(i - 1)
-        {bx, by} = at.(i)
-        {cx, cy} = at.(i + 1)
-        {dx, dy} = at.(i + 2)
-
-        "C#{n(bx + (cx - ax) / 6)} #{n(by + (cy - ay) / 6)} #{n(cx - (dx - bx) / 6)} #{n(cy - (dy - by) / 6)} #{n(cx)} #{n(cy)}"
-      end
-
-    "M#{n(x0)} #{n(y0)}" <> Enum.join(segments) <> "Z"
-  end
 
   defp polygon([{x0, y0} | rest]) do
     "M#{n(x0)} #{n(y0)}" <> Enum.map_join(rest, fn {x, y} -> "L#{n(x)} #{n(y)}" end) <> "Z"

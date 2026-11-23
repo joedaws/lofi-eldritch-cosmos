@@ -217,32 +217,29 @@ the page falls back to polling `GET /world`.
 ## Portraits
 
 `Lofi.Portrait` draws every being from its *features* (`Lofi.Portrait.Features`) in black
-and white ink, in the manner of horror manga, inside a classic Mac OS window: screentone
-dots for tone, hatching and cross-hatching for shadow, solid spotted blacks for focus,
-contour lines that follow the form, a rim of bare paper where the light falls. The design
-follows character-design practice: a strong silhouette first, one memorable feature, light
-and value contrast, expression.
+and white ink, inside a classic Mac OS window. Every being is **the same figure**: a dark
+hooded robe filling the frame, its face a black hollow. What tells beings apart is the
+**mask** over that hollow, in bare bone against the dark, so the eye goes straight to it.
 
-- **Anatomy comes from the name alone**, so a being keeps its face all its life and a name
+- **The mask comes from the name alone**, so a being keeps its face all its life and a name
   can be previewed before summoning. The number of parts in the name (`Gor Lop~Tome` → 3)
-  is its number of eyes. A hash of the name picks its build (an enormous head on a small
-  body, a head on a long neck, a squat body with a sunken head, several heads on stalks, a
-  hood with only eyes showing), head size, lean, whether it looms out of the frame, the
-  side the light falls from, the tone of its hide (pale or mid screentone, or near-black
-  with white highlights), whether it is biomechanical (cables, ports, segmented plates),
-  what it stands before (manga focus lines, a hatched megastructure, rain, or a black
-  void), and its **hero feature**: a great eye, a crown of horns, antlers, a frill, a halo
-  of eyes, a mask, a maw, or a beard of tentacles, printed as the strongest black or white.
+  is its number of eye holes. A hash of the name picks the mask's outline (skull, oval,
+  beak, shield, moon, slab, lantern, or a visor across the eyes), the shape of its eye holes
+  (hollow, round, slit, almond, ringed), its mouth (stitches, a grille, a slit, teeth, a
+  smile, or none), a mark (a stripe, tears, runes, a darkened half, dots), its ink (bare
+  bone or pale ash), what crowns it (horns, antlers, a crown, a halo, a fan of spikes,
+  pointed ears on the hood, or nothing), the cut of the hood (round, peaked, deep), the side
+  the light falls from, and what it stands before (manga focus lines, a hatched
+  megastructure, rain, or a black void).
 - **Mood comes from its state**, in a few coarse levels so the portrait changes only when
-  something meaningful does: ichor (heavy lids and an open mouth when starving, a brighter
-  outline when full), lack (wide eyes, pinpoint pupils, raised brows), the dominant register (Real:
-  a jagged outline, spines and a grimace; Symbolic: a ring of runes; Imaginary: symmetry and
-  a shifted double), a loosened knot (a broken ring, a scowl), mourning (a tear and a
-  frown), whispering (rising sound), generosity (smooth forms, or spines when it is low),
-  wanderlust (longer limbs), its desire and revealed objet a (tokens in the corners), and
-  fading (grey, cracked, eyes closed).
-- `Lofi.Portrait.Svg.render(features, silhouette: true)` draws the filled silhouette, for
-  judging whether designs read and differ.
+  something meaningful does: ichor (the mask slips askew when starving, the eyes blaze when
+  full), lack (wide pupils), the dominant register (Real: a cracked mask; Symbolic: a ring
+  of runes; Imaginary: a mask held perfectly straight and a shifted double), a loosened knot
+  (a broken ring), mourning (a tear), whispering (rising sound), generosity (an open hand),
+  wanderlust (a staff), its desire and revealed objet a (tokens in the corners), and fading
+  (a grey robe, a cracked mask hanging askew, empty eyes).
+- `Lofi.Portrait.Svg.render(features, silhouette: true)` draws only the figure and the
+  mask's outline, for judging whether masks read and differ.
 
 Renderers implement `Lofi.Portrait.Renderer`. The default, `Lofi.Portrait.Svg`, draws in
 code (about 0.3 ms and 10 KB per portrait). `Lofi.Portrait.ImageModel` is the scaffold for

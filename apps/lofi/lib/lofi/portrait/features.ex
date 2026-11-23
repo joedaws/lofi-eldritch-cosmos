@@ -3,62 +3,64 @@ defmodule Lofi.Portrait.Features do
   What a portrait shows, derived from a being. Plain JSON-able data, so it
   can be cached on, hashed, handed to an image model or to an agent.
 
-  `"anatomy"` depends only on the name (see `anatomy/1`). `"mood"` depends
-  on the being's state, bucketed into a few levels each.
+  Every being is the same dark, hooded and robed figure; what tells them
+  apart is the **mask** over its face. `"anatomy"` (the mask, its eyes and
+  mouth, what crowns it, the hood) depends only on the name (see
+  `anatomy/1`). `"mood"` depends on the being's state, bucketed into a few
+  levels each.
   """
 
-  @forms ~w(bulb spire maw cluster veil)
-  @limbs ~w(tentacles horns antlers fronds none)
-  @markings ~w(rings dots runes veins)
-  # ink tone of the body: pale screentone, mid screentone, or near-black
-  @tones ~w(light light mid mid dark)
+  # the outline of the mask: the first thing you tell beings apart by
+  @masks ~w(skull oval beak shield moon slab lantern visor)
+  @eye_shapes ~w(hollow round slit almond ring)
+  @mouths ~w(stitches grille slit teeth smile none)
+  # what crowns it: breaking the hood's outline, or not
+  @crests ~w(none none horns antlers crown halo spikes ears)
+  @marks ~w(none stripe tears runes split dots)
+  # the mask's own ink: bare bone, or a pale ash screentone
+  @inks ~w(bone bone ash)
+  @hoods ~w(round peaked deep)
   # what it stands before: manga focus lines, a megastructure, rain, or the void
   @grounds ~w(focus structure rain void)
-  # the one thing you remember about a being after two seconds
-  @heroes ~w(great_eye crown antlers frill halo_eyes mask maw beard)
 
-  def forms(), do: @forms
-  def tones(), do: Enum.uniq(@tones)
+  def masks(), do: @masks
+  def eye_shapes(), do: @eye_shapes
+  def mouths(), do: @mouths
+  def crests(), do: Enum.uniq(@crests)
+  def marks(), do: @marks
+  def hoods(), do: @hoods
   def grounds(), do: @grounds
-  def heroes(), do: @heroes
 
   @doc "Features of a being view (map with \"name\", \"status\", \"psyche\", …) or of a bare name"
   def from(name) when is_binary(name), do: from(%{"name" => name})
 
   def from(%{"name" => name} = being) do
     name = String.trim(name || "") |> then(&if(&1 == "", do: "?", else: &1))
-    %{"version" => 3, "name" => name, "anatomy" => anatomy(name), "mood" => mood(being)}
+    %{"version" => 4, "name" => name, "anatomy" => anatomy(name), "mood" => mood(being)}
   end
 
   @doc """
-  The body a name gives. The number of parts in the name (split on spaces,
-  `~` and `-`, as in "Gor Lop~Tome") is the number of eyes; everything else
-  comes from a hash of the name.
+  The mask a name gives. The number of parts in the name (split on spaces,
+  `~` and `-`, as in "Gor Lop~Tome") is the number of eyes in the mask;
+  everything else comes from a hash of the name.
   """
   def anatomy(name) do
     clean = name |> String.trim() |> String.downcase()
     seed = :erlang.phash2(clean, 4_294_967_296)
     parts = clean |> String.split(~r/[\s~\-]+/, trim: true) |> length()
-    limbs = pick(@limbs, seed, :limbs)
 
     %{
       "seed" => seed,
-      "form" => pick(@forms, seed, :form),
+      "mask" => pick(@masks, seed, :mask),
       "eyes" => parts |> max(1) |> min(7),
-      "limbs" => limbs,
-      "limb_count" => if(limbs == "none", do: 0, else: 2 + rem(div(seed, 7), 5)),
-      "markings" => pick(@markings, seed, :markings),
-      "tone" => pick(@tones, seed, :tone),
+      "eye_shape" => pick(@eye_shapes, seed, :eye_shape),
+      "mouth" => pick(@mouths, seed, :mouth),
+      "crest" => pick(@crests, seed, :crest),
+      "mark" => pick(@marks, seed, :mark),
+      "ink" => pick(@inks, seed, :ink),
+      "hood" => pick(@hoods, seed, :hood),
       "ground" => pick(@grounds, seed, :ground),
-      # cables, ports and segmented plates
-      "biomech" => rem(div(seed, 29), 2) == 0,
-      "hero" => pick(@heroes, seed, :hero),
-      # proportions: how much of it is head, how it leans, how close it looms
-      "head" => pick(~w(small medium large), seed, :head),
-      "lean" => pick(~w(left none right), seed, :lean),
-      "looming" => rem(div(seed, 17), 4) == 0,
-      "light" => pick(~w(left right), seed, :light),
-      "symmetric" => rem(div(seed, 13), 3) == 0
+      "light" => pick(~w(left right), seed, :light)
     }
   end
 

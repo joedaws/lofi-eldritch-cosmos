@@ -18,16 +18,16 @@ defmodule Lofi.PortraitTest do
     "psyche" => %{"lack" => 30}
   }
 
-  test "a name always gives the same body, and its parts are its eyes" do
+  test "a name always gives the same mask, and its parts are its eyes" do
     assert Features.anatomy("Gor Lop~Tome") == Features.anatomy("  gor lop~tome ")
     assert Features.anatomy("Gor Lop~Tome")["eyes"] == 3
     assert Features.anatomy("Ulth")["eyes"] == 1
     assert Features.anatomy("a b c d e f g h i")["eyes"] == 7
 
-    bodies = for n <- ~w(Ulth Qeb Kol Hask Vrin Sable Ithikka Morrow), do: Features.anatomy(n)
+    faces = for n <- ~w(Ulth Qeb Kol Hask Vrin Sable Ithikka Morrow), do: Features.anatomy(n)
 
-    assert bodies
-           |> Enum.map(&{&1["form"], &1["hero"], &1["ground"]})
+    assert faces
+           |> Enum.map(&{&1["mask"], &1["crest"], &1["mouth"]})
            |> Enum.uniq()
            |> length() > 4
   end
@@ -46,7 +46,7 @@ defmodule Lofi.PortraitTest do
     assert Portrait.tag(calm) == Portrait.tag(Portrait.features(%{@calm | "ichor" => 121}))
   end
 
-  test "every body in every mood is well-formed SVG" do
+  test "every mask in every mood is well-formed SVG" do
     moods = [
       %{},
       %{"status" => "faded", "desire" => "bone"},
@@ -84,17 +84,22 @@ defmodule Lofi.PortraitTest do
     end
   end
 
-  test "every form carries every hero feature, in colour and in silhouette" do
+  test "every mask carries every crest, eye, mouth and mark, in ink and in silhouette" do
     base = Portrait.features(@calm)
 
-    for form <- Features.forms(),
-        hero <- Features.heroes(),
-        eyes <- [1, 4],
+    for mask <- Features.masks(),
+        crest <- Features.crests(),
+        {eye_shape, mouth, mark} <-
+          Enum.zip([Features.eye_shapes(), Features.mouths(), Features.marks()]),
+        eyes <- [1, 3, 7],
         faded <- [false, true] do
       f =
         base
-        |> put_in(["anatomy", "form"], form)
-        |> put_in(["anatomy", "hero"], hero)
+        |> put_in(["anatomy", "mask"], mask)
+        |> put_in(["anatomy", "crest"], crest)
+        |> put_in(["anatomy", "eye_shape"], eye_shape)
+        |> put_in(["anatomy", "mouth"], mouth)
+        |> put_in(["anatomy", "mark"], mark)
         |> put_in(["anatomy", "eyes"], eyes)
         |> put_in(["mood", "faded"], faded)
 
@@ -110,6 +115,7 @@ defmodule Lofi.PortraitTest do
     prompt = Portrait.prompt(Portrait.features(Map.put(@calm, "status", "faded")))
     assert prompt =~ "Gor Lop~Tome"
     assert prompt =~ "3 eyes"
+    assert prompt =~ "mask"
     assert prompt =~ "faded"
   end
 

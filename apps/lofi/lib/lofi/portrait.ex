@@ -4,8 +4,9 @@ defmodule Lofi.Portrait do
 
   A portrait is drawn from a being's *features* (`Lofi.Portrait.Features`):
 
-    * its **anatomy** comes from its name alone, so a being keeps its face
-      all its life, and a name can be previewed before it is summoned;
+    * its **anatomy** (the mask its hooded figure wears) comes from its
+      name alone, so a being keeps its face all its life, and a name can be
+      previewed before it is summoned;
     * its **mood** comes from its state, coarsely bucketed so the portrait
       changes when something meaningful changes (hunger, lack, a loosened
       knot, mourning, fading) and not on every tick.
