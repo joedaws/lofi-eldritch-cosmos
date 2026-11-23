@@ -1020,7 +1020,7 @@
             <div style="display:grid;gap:6px;min-width:0">
               <label for="mb-name">Name (leave empty for one from the grimoire)</label>
               <input type="text" id="mb-name" name="name" maxlength="32">
-              <span class="empty" id="mb-preview-note" style="font-style:normal">Its name shapes its body: type one to see who you would summon.</span>
+              <span class="empty" id="mb-preview-note" style="font-style:normal">Its name shapes its mask: type one to see who you would summon.</span>
             </div>
           </div>
           <label for="mb-place">Where it awakens</label>
@@ -1149,7 +1149,7 @@
     if (n) { state.view.x = n.wx; state.view.y = n.wy; }
   }
 
-  // the summon form previews the body a name gives
+  // the summon form previews the mask a name gives
   let previewTimer = null;
   document.querySelector("aside").addEventListener("input", (e) => {
     if (e.target.id !== "mb-name") return;
@@ -1160,7 +1160,7 @@
       if (!name) { slot.replaceChildren(); return; }
       slot.dataset.portrait = `/portraits/preview?name=${encodeURIComponent(name)}`;
       fillPortraits(slot.parentElement);
-      $("mb-preview-note").textContent = "The cosmos will give it this body. Its mood will change as it lives.";
+      $("mb-preview-note").textContent = "The cosmos will give it this mask. Its mood will change as it lives.";
     }, 250);
   });
 
