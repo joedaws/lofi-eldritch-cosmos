@@ -1,0 +1,34 @@
+const { chromium } = require('playwright');
+const out = process.argv[2], U = 'http://localhost:5454';
+(async () => {
+  const b = await chromium.launch();
+  const p = await b.newPage({ viewport: { width: 1400, height: 900 }, deviceScaleFactor: 2 });
+  p.on('console', (m) => { if (m.type() === 'error') console.log('console:', m.text()); });
+  await p.goto(U + '/users/register');
+  await p.fill('input[name="user[email]"]', 'keeper@example.com');
+  await p.fill('input[name="user[display_name]"]', 'Keeper of Tomes');
+  await p.click('button:has-text("Create an account")');
+  await p.waitForTimeout(800);
+  await p.goto(U + '/dev/mailbox');
+  await p.click('text=/log in|confirm/i').catch(() => {});
+  await p.waitForTimeout(500);
+  const html = await p.content();
+  const m = html.match(/http:\/\/localhost:5454\/users\/log-in\/[A-Za-z0-9_\-]+/);
+  console.log('link', !!m);
+  await p.goto(m[0]);
+  await p.waitForTimeout(500);
+  await p.click('button:has-text("Confirm"), button:has-text("Log in"), button:has-text("Keep me")').catch((e) => console.log('nobtn', e.message));
+  await p.waitForTimeout(1000);
+  await p.goto(U + '/'); await p.waitForTimeout(2500);
+  await p.click('#tab-mine'); await p.waitForTimeout(800);
+  await p.type('#mb-name', 'Gor Lop~Tome', { delay: 40 }); await p.waitForTimeout(1500);
+  await p.fill('#mb-front', 'capital of Peru'); await p.fill('#mb-back', 'Lima');
+  await p.evaluate(() => document.querySelector('#mb-name').scrollIntoView({ block: 'center' }));
+  await p.waitForTimeout(300);
+  await p.screenshot({ path: out + '/app-summon.png' });
+  await p.click('form[data-mine="summon"] button.primary'); await p.waitForTimeout(2000);
+  if (await p.$('#toggle:not([hidden])')) { await p.click('#toggle'); await p.waitForTimeout(6000); }
+  await p.click('#tab-beings'); await p.waitForTimeout(2500);
+  await p.screenshot({ path: out + '/app-beings.png' });
+  await b.close();
+})();
