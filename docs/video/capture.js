@@ -6,6 +6,8 @@ const [, , dir, mode, pageName = 'ad.html', framesDir = 'frames'] = process.argv
   p.on('console', (m) => { if (m.type() === 'error') console.log('console:', m.text()); });
   await p.goto('file://' + dir + '/' + pageName);
   await p.evaluate(() => window.ready);
+  const [w, h] = await p.evaluate(() => window.SIZE || [1280, 720]);
+  await p.setViewportSize({ width: w, height: h });
   console.log('font VT323 loaded:', await p.evaluate(() => document.fonts.check('40px VT323')));
   const D = await p.evaluate(() => window.DURATION), FPS = 30, BAR = 2.5;
   const times = mode === 'stills'

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Builds the ad (lofi-eldritch-cosmos-ad.mp4) from scratch. See README.md.
+# Builds the ad (lofi-eldritch-cosmos-ad.mp4) and the vertical short
+# (lofi-eldritch-cosmos-short.mp4) from scratch. See README.md.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 cd "$HERE"
-mkdir -p b adframes
+mkdir -p b adframes shortframes
 
 echo "· guide screenshots"
 cp guide/*.png b/
@@ -41,4 +42,11 @@ ffmpeg -loglevel error -y -framerate 30 -i adframes/f%05d.jpg -i music.wav \
   -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k \
   -shortest -movflags +faststart lofi-eldritch-cosmos-ad.mp4
 
-echo "done: $HERE/lofi-eldritch-cosmos-ad.mp4"
+echo "· the vertical short"
+find shortframes -name 'f*.jpg' -delete
+node capture.js "$HERE" frames short.html shortframes
+ffmpeg -loglevel error -y -framerate 30 -i shortframes/f%05d.jpg -i music.wav \
+  -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k \
+  -shortest -movflags +faststart lofi-eldritch-cosmos-short.mp4
+
+echo "done: $HERE/lofi-eldritch-cosmos-ad.mp4 and $HERE/lofi-eldritch-cosmos-short.mp4"
