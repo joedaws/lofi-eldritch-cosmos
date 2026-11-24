@@ -1,6 +1,6 @@
 # The ad
 
-A 47.5-second, 1280×720 ad for the cosmos: 19 bars at 96 BPM, one scene per bar, cut to a
+A 47.5-second ad for the cosmos: 19 bars at 96 BPM, one scene per bar, cut to a
 lo-fi soundtrack synthesized in code, in two shapes: a landscape ad and a vertical
 YouTube Short. Run `./build.sh` to build `lofi-eldritch-cosmos-ad.mp4` (1280×720) and
 `lofi-eldritch-cosmos-short.mp4` (1080×1920) from scratch (about four minutes).
